@@ -1,0 +1,2 @@
+# F1 Manager 
+Dans ce jeu, vous controlez une équipe de F1. Vous gérez les pilotes et le développement de la voiture tout au long de la saison. Les autres équipes développent également leurs voitures. A la fin de chaques saisons, les statistiques des voitures changent, comme les statistiques des pilotes, faites les bons choix!
