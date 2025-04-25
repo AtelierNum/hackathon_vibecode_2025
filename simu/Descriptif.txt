@@ -1,0 +1,10 @@
+Civilization Simulator est un simulateur de civilisation avec des carrés de différentes couleurs.
+ Il y a une générations aléatoire du terrain avec des bonus collectables. Vous pouvez lancer une simulation entre 2 et 6 civilisation en même temps.
+chaques individus d'une civilisation se déplace de façon autonome
+
+Index.html contient le jeu avec un menu sous forme de maquette.
+Index_2.html contient uniquement le jeu avec des fonctionnalité de pathfinding plus poussées.
+
+les deux n'ont pas pus être combinés par soucie de temps.
+Beudadert Tom
+Longet Jules

@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu de Civilisation</title>
+    <style>
+        /* Styles de base pour le corps pour centrer le contenu */
+        body {
+            margin: 0;
+            overflow: hidden; /* Empêche le défilement si le contenu dépasse */
+            font-family: 'Inter', sans-serif; /* Utiliser la police Inter */
+            background-color: #f0f0f0;
+            display: flex; /* Utilise flexbox pour organiser les éléments */
+            justify-content: center; /* Centre horizontalement le contenu flex */
+            align-items: center; /* Centre verticalement le contenu flex */
+            min-height: 100vh; /* S'assure que le corps occupe au moins toute la hauteur de la fenêtre */
+            flex-direction: row; /* Disposer le canvas et les contrôles côte à côte par default */
+            padding: 10px; /* Ajouter un peu de rembourrage autour du contenu */
+            box-sizing: border-box; /* Inclure le rembourrage dans la largeur et la hauteur totales de l'élément */
+        }
+
+        /* CSS pour le canvas du jeu */
+        #gameCanvas {
+            background-color: #8FBC8F; /* Fond vert pour la terre */
+            display: block; /* Empêche l'espace supplémentaire sous le canvas */
+            cursor: pointer; /* Change le curseur au survol */
+            max-width: 800px; /* Largeur maximale du canvas (peut être ajusté si la grille est beaucoup plus grande) */
+            max-height: 600px; /* Hauteur maximale du canvas */
+            width: 100%; /* Permet au canvas de prendre toute la largeur disponible jusqu'à max-width */
+            height: auto; /* Permet à la hauteur de s'ajuster pour maintenir le rapport d'aspect */
+            aspect-ratio: 4 / 3; /* Maintient le rapport d'aspect 4:3 (correspondant à 80 cols / 60 rows) */
+            margin-right: 20px; /* Espace entre le canvas et les contrôles */
+            border-radius: 8px; /* Coins arrondis pour le canvas */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Ajouter une ombre subtile */
+            border: 1px solid #7C9F7C; /* Ajouter une bordure subtile */
+        }
+
+        /* Styles pour le conteneur des contrôles */
+        #controls {
+            position: relative; /* Relative pour que le z-index fonctionne correctement */
+            display: flex;
+            flex-direction: column; /* Empiler les boutons verticalement */
+            gap: 10px; /* Espace entre les boutons */
+            z-index: 10; /* S'assurer que les contrôles sont au-dessus du canvas si nécessaire */
+            padding: 10px; /* Ajouter un rembourrage */
+            background-color: rgba(255, 255, 255, 0.8); /* Fond semi-transparent */
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* Styles pour les boutons */
+        .button {
+            padding: 12px 20px; /* Rembourrage augmenté */
+            border: none;
+            border-radius: 8px; /* Coins plus arrondis */
+            background-color: #4CAF50; /* Couleur verte */
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background-color 0.3s ease, transform 0.1s ease; /* Ajouter une transition pour l'effet de pression */
+        }
+
+        .button:hover {
+            background-color: #367c39; /* Vert plus foncé au survol */
+        }
+
+        .button:active {
+            background-color: #2b5e2e; /* Vert encore plus foncé lorsqu'il est pressé */
+            transform: scale(0.98); /* Réduire légèrement le bouton lorsqu'il est pressé */
+        }
+
+        /* Styles pour la boîte de message */
+        #messageBox {
+            position: fixed; /* Positionnement fixe par rapport à la fenêtre */
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%); /* Centrer la boîte de message horizontalement */
+            background-color: rgba(255, 255, 255, 0.9); /* Blanc semi-transparent */
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            z-index: 10; /* S'assurer qu'il est au-dessus des autres éléments */
+            white-space: nowrap; /* Empêcher le retour à la ligne du texte */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            max-width: 90%; /* Limit width on smaller screens */
+             text-align: center;
+        }
+
+        /* Styles pour le modal */
+        .modal {
+            display: none; /* Masqué par défaut */
+            position: fixed; /* Rester en place par rapport à la fenêtre */
+            z-index: 11; /* Se placer au-dessus de tout le reste */
+            left: 0;
+            top: 0;
+            width: 100%; /* Largeur totale de la fenêtre */
+            height: 100%; /* Hauteur totale de la fenêtre */
+            overflow: auto; /* Activer le défilement si le contenu du modal dépasse */
+            background-color: rgba(0,0,0,0.4); /* Noir avec opacité */
+        }
+
+        /* Styles pour le contenu du modal */
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% du haut et centré horizontalement */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Occupe 80% de la largeur du modal (qui est à 100% de la fenêtre) */
+            max-width: 600px; /* Largeur maximale pour le contenu du modal */
+            border-radius: 5px;
+            position: relative; /* Pour positionner le bouton de fermeture par rapport à ce bloc */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Styles pour le bouton de fermeture du modal */
+        .close-button {
+            color: #aaa;
+            float: right; /* Permet de flotter le bouton */
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute; /* Positionner le bouton de fermeture absolument dans le modal-content */
+            top: 10px;
+            right: 15px;
+            cursor: pointer;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+        }
+
+        /* Styles spécifiques pour le bouton d'instructions */
+        #instructionsButton {
+            background-color: #008CBA; /* Couleur bleue */
+        }
+
+        #instructionsButton:hover {
+            background-color: #007ba7; /* Bleu plus foncé au survol */
+        }
+
+        /* Styles pour l l'affichage des caractéristiques */
+        #characteristicsDisplay {
+             position: relative; /* Relative pour que le z-index fonctionne correctement */
+             color: #333; /* Couleur gris foncé */
+             font-size: 16px;
+             z-index: 10; /* S'assurer qu'il est au-dessus */
+             padding: 15px; /* Rembourrage augmenté */
+             border-radius: 8px; /* Coins plus arrondis */
+             background-color: rgba(255, 255, 255, 0.8); /* Blanc semi-transparent */
+             width: 220px; /* Largeur ajustée */
+             word-wrap: break-word; /* Permet aux longs mots de se casser */
+             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+             margin-left: 20px; /* Espace entre les caractéristiques et le canvas */
+             display: flex; /* Use flexbox for the display content */
+             flex-direction: column; /* Stack content vertically */
+             gap: 5px; /* Space between stat lines */
+        }
+
+        /* Styles for individual stat lines */
+         #characteristicsDisplay p {
+             margin: 0; /* Remove default paragraph margin */
+         }
+
+        /* Ajustements réactifs pour les petits écrans */
+        @media (max-width: 900px) { /* Applique ces styles lorsque la largeur de la fenêtre est inférieure ou égale à 900px */
+            body {
+                flex-direction: column; /* Empiler les éléments verticalement */
+                justify-content: flex-start; /* Aligner les éléments en haut */
+                padding-top: 10px; /* Ajouter un peu d'espace en haut */
+                align-items: center; /* Center items horizontally */
+            }
+
+            #gameCanvas {
+                margin-right: 0; /* Supprimer la marge droite */
+                margin-bottom: 20px; /* Ajouter une marge inférieure */
+                max-width: 95%; /* Permettre au canvas de prendre plus de largeur */
+                max-height: unset; /* Supprimer la contrainte de hauteur maximale */
+                height: auto; /* Ajuster la hauteur automatiquement */
+            }
+
+            #controls {
+                position: static; /* Supprimer le positionnement absolu/relative dans le flux normal */
+                margin-bottom: 20px; /* Ajouter de l'espace sous les contrôles */
+                align-items: center; /* Centrer les boutons horizontalement */
+                width: 95%; /* Permettre aux contrôles de prendre plus de largeur */
+                margin-right: 0; /* Supprimer la marge */
+                margin-left: 0; /* Supprimer la marge */
+            }
+
+            #characteristicsDisplay {
+                position: static; /* Supprimer le positionnement absolu/relative dans le flux normal */
+                width: 95%; /* Permettre aux caractéristiques de prendre plus de largeur */
+                margin: 0 auto 20px auto; /* Centrer et ajouter une marge inférieure */
+                text-align: left; /* Keep text aligned left */
+            }
+
+             #messageBox {
+                position: static; /* Remove fixed position */
+                transform: none; /* Remove centering transform */
+                width: 95%; /* Use available width */
+                margin: 10px auto; /* Center horizontally and add margin */
+                max-width: none; /* Remove max width constraint */
+                white-space: normal; /* Allow wrapping on small screens */
+             }
+
+             .modal-content {
+                 width: 90%; /* Rendre le modal plus large sur les petits écrans */
+                 margin: 10% auto; /* Ajuster la marge */
+             }
+        }
+
+    </style>
+     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="controls">
+        <button id="startButton" class="button">Démarrer</button>
+        <button id="pauseButton" class="button">Pause</button>
+        <button id="resetButton" class="button">Réinitialiser</button>
+        <button id="instructionsButton" class="button">Instructions</button>
+    </div>
+
+    <div id="characteristicsDisplay">
+        <!-- Stats will be populated here by JavaScript -->
+         <p><strong>Statistiques:</strong></p>
+         <!-- Example for Blue -->
+         <p>Blue Population: <span id="bluePopulation">0</span></p>
+         <p>Blue Speed: <span id="blueSpeed">N/A</span></p>
+         <!-- Add elements for other civs if desired -->
+          <p>Purple Population: <span id="purplePopulation">0</span></p>
+          <p>Purple Speed: <span id="purpleSpeed">N/A</span></p>
+           <p>Black Population: <span id="blackPopulation">0</span></p>
+          <p>Black Speed: <span id="blackSpeed">N/A</span></p>
+           <p>Green Population: <span id="greenPopulation">0</span></p>
+          <p>Green Speed: <span id="greenSpeed">N/A</span></p>
+    </div>
+
+    <div id="messageBox">Bienvenue au jeu de civilisation !</div>
+
+
+    <div id="instructionsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">×</span>
+            <h2>Comment jouer</h2>
+            <p>
+                Ceci est une simple simulation de civilisations s'étendant sur une carte verte.
+            </p>
+            <ol>
+                 <li><strong>Choisir l'emplacement de la civilisation bleue :</strong> Avant de cliquer sur "Démarrer", cliquez n'importe où sur la grille verte pour définir le point de départ de la civilisation bleue.</li>
+                <li><strong>Démarrer :</strong> Cliquez sur le bouton "Démarrer" pour commencer la simulation. Si vous n'avez pas choisi d'emplacement, la civilisation bleue apparaîtra aléatoirement.</li>
+                <li><strong>Pause :</strong> Cliquez sur "Pause" pour arrêter la simulation.</li>
+                <li><strong>Réinitialiser :</strong> Cliquez sur "Réinitialiser" pour effacer la carte et recommencer. Vous pourrez choisir un nouvel emplacement.</li>
+                <li><strong>Instructions:</strong> Cliquez sur "Instructions" pour voir ce message à nouveau.</li>
+            </ol>
+            <p>
+                La zone verte représente la terre. Quatre civilisations (carrés bleus, violets, noirs et verts) se déplaceront sur la carte, mangeant des pommes (carrés rouges) pour se reproduire et des carottes (carrés jaunes) pour augmenter leur vitesse. Des murs (carrés gris foncé) bloquent le mouvement.
+            </p>
+            <p>
+                Les pommes et les carottes ne réapparaissent pas une fois mangées. Quand une pomme est mangée, une nouvelle unité de civilisation apparaît sur un *tile voisin libre*. Chaque unité de civilisation essaiera de cibler **une seule nourriture (pomme ou carotte) disponible à la fois** dans son rayon de détection (visible dans la console). Une fois qu'une nourriture est ciblée par une unité, les autres unités chercheront une autre nourriture disponible. Chaque civilisation commence avec une seule unité répartie sur la carte.
+            </p>
+            <p>Amusez-vous avec la simulation !</p>
+            <p>Ouvrez la console développeur (généralement F12) pour voir les événements de collision et de consommation.</p>
+        </div>
+    </div>
+
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('startButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const resetButton = document.getElementById('resetButton');
+        const messageBox = document.getElementById('messageBox');
+        const instructionsButton = document.getElementById('instructionsButton');
+        const instructionsModal = document.getElementById('instructionsModal');
+        const closeButton = document.querySelector('.close-button');
+
+        // Get the elements for displaying characteristics
+        const bluePopulationDisplay = document.getElementById('bluePopulation');
+        const blueSpeedDisplay = document.getElementById('blueSpeed');
+        const purplePopulationDisplay = document.getElementById('purplePopulation');
+        const purpleSpeedDisplay = document.getElementById('purpleSpeed');
+        const blackPopulationDisplay = document.getElementById('blackPopulation');
+        const blackSpeedDisplay = document.getElementById('blackSpeed');
+        const greenPopulationDisplay = document.getElementById('greenPopulation');
+        const greenSpeedDisplay = document.getElementById('greenSpeed');
+
+
+        let animationFrameId; // ID for the animation frame
+        let isRunning = false; // Flag to indicate if the game is running
+        let civilizations = []; // Array to store data for ALL civilization units
+        let apples = []; // Array to store positions and state of red apples
+        let carrots = []; // Array to store positions and state of yellow carrots
+        let walls = []; // Array to store data for dark grey wall segments
+
+        let numRows; // Number of rows in the grid
+        let numCols; // Number of columns in the grid
+        let cellSize; // Size of each cell in pixels - THIS IS KEY FOR VISUAL SCALING
+
+        // --- Player Interaction Variables ---
+        let playerSpawnRow = -1; // Stores the chosen row for blue civ
+        let playerSpawnCol = -1; // Stores the chosen col for blue civ
+        let hasPlayerPlacedBlue = false; // Flag to know if player clicked a spot
+
+        // Store the *final* determined start positions (one per civ type) after checks
+        let finalCivStartPoints = [];
+
+        // Game Parameters
+        const baseMoveInterval = 600; // Base time in ms between each potential move (smaller = faster game)
+        const initialSpeedBaseMultiplier = 1.0; // Initial speed: 1.0 means 1 tile per base interval
+        const carrotSpeedIncreaseMultiplier = 0.15; // Each carrot adds this value to the speed multiplier
+        const detectionRadius = 15; // Manhattan distance radius for finding food
+
+        // Initialization Parameters
+        const numInitialApples = 40; // Number of apples to generate
+        const numInitialCarrots = 25; // Number of carrots to generate
+        const numInitialWalls = 7; // Number of wall segments to generate
+        const minWallLength = 3; // Minimum segments per wall
+        const maxWallLength = 15; // Maximum segments per wall
+        const minStartingDistance = 25; // Minimum Manhattan distance between the initial spawn points of different civ types
+        const startingZoneRadius = 6; // Radius around primary start points walls should avoid
+
+        // Define the civilization types to spawn (each will start with 1 unit initially)
+        const civTypesToSpawn = [
+            { color: 'blue', name: 'Blue' },
+            { color: 'purple', name: 'Purple' },
+            { color: 'black', name: 'Black' },
+            { color: 'green', name: 'Green' }
+        ];
+
+
+        // Function to calculate Manhattan distance between two points
+        function getManhattanDistance(pos1, pos2) {
+             return Math.abs(pos1.row - pos2.row) + Math.abs(pos2.col - pos1.col);
+        }
+
+
+        // Function to resize the canvas based on the container size and aspect ratio
+        // This function is called on load and window resize.
+        // It calculates the cellSize, which scales the grid elements visually.
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const maxWidth = 800; // Max limits based on CSS
+            const maxHeight = 600;
+            numRows = 60; // Set grid size here
+            numCols = 80; // Set grid size here
+            const aspectRatio = numCols / numRows; // Desired 4:3 aspect ratio
+
+            const containerStyle = getComputedStyle(container);
+            let availableWidth = container.clientWidth - (parseFloat(containerStyle.paddingLeft) + parseFloat(containerStyle.paddingRight));
+            let availableHeight = container.clientHeight - (parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom));
+
+            let width, height;
+
+            // Calculate canvas size respecting aspect ratio and fitting available space
+            // Prioritize fitting the height while maintaining aspect ratio, then check width constraints
+             const potentialWidthBasedOnHeight = availableHeight * aspectRatio;
+             const potentialHeightBasedOnWidth = availableWidth / aspectRatio;
+
+
+             if (potentialWidthBasedOnHeight <= availableWidth) {
+                 width = potentialWidthBasedOnHeight;
+                 height = availableHeight;
+             } else {
+                 width = availableWidth;
+                 height = potentialHeightBasedOnWidth;
+             }
+
+             // Apply maximum dimensions
+            width = Math.min(width, maxWidth);
+            height = Math.min(height, maxHeight);
+
+            // Ensure aspect ratio is strictly maintained after applying maxes
+            // Use a small tolerance for floating point errors
+            if (Math.abs(width / height - aspectRatio) > 0.001) {
+                 if (width / height > aspectRatio) {
+                      // If current aspect ratio is wider than desired, reduce width
+                      width = height * aspectRatio;
+                  } else {
+                      // If current aspect ratio is taller than desired, reduce height
+                      height = width / aspectRatio;
+                  }
+            }
+
+
+            // Set the actual HTML canvas size
+            canvas.width = width;
+            canvas.height = height;
+
+            // Calculate the size of each cell (cellSize)
+            // This should be the same whether calculated from width or height if aspect ratio is correct
+            cellSize = canvas.width / numCols;
+             // console.log(`Canvas resized to ${width}x${height}, CellSize: ${cellSize.toFixed(2)}`);
+
+
+            // Redraw the grid immediately after resizing
+             drawGrid(); // Draw the empty grid background
+        }
+
+        // Function to prepare the game area on initial load or reset
+        // Clears game state and draws an empty grid, waiting for player input or start button.
+        function prepareGameArea() {
+             // Set grid dimensions (also used in resizeCanvas)
+             numRows = 60;
+             numCols = 80;
+
+            // Resize canvas and draw the initial empty grid
+            resizeCanvas();
+
+            // Clear all game state variables
+            civilizations = [];
+            apples = [];
+            carrots = [];
+            walls = [];
+            finalCivStartPoints = []; // Clear determined start points from previous game
+
+            // Reset player placement state
+            playerSpawnRow = -1;
+            playerSpawnCol = -1;
+            hasPlayerPlacedBlue = false; // Reset flag
+
+            // Update display to initial state (0 population etc.)
+             updateCharacteristicsDisplay();
+
+            // Display initial message prompting player action
+            displayMessage('Bienvenue ! Choisissez un emplacement pour la civilisation bleue (cliquez sur la grille) ou cliquez sur "Démarrer" pour un placement aléatoire.');
+
+             // Draw the empty grid after clearing everything
+            drawGrid();
+        }
+
+
+        // Function to fully initialize the game state (called when starting from empty/reset)
+        // This populates the game world (civs, walls, food) ensuring no overlaps initially.
+        function initGame() {
+            // Clear any existing data before generating a new world
+            civilizations = [];
+            apples = [];
+            carrots = [];
+            walls = [];
+            finalCivStartPoints = []; // Ensure this is cleared before determining new points
+
+            const maxStartPosAttempts = 500; // Max attempts to find suitable starting points for civ groups
+
+            // --- Step 1: Determine the SINGLE Initial Starting Point for EACH Civ Type ---
+            // Use a temporary list during point determination to check distances against points *already determined* in this step.
+             const tempChosenStartPoints = [];
+
+            for (const civType of civTypesToSpawn) {
+                let startRow, startCol;
+                let startPosChosen = false;
+                let attempts = 0;
+
+                // Special handling for the Blue civilization - try player click first
+                if (civType.color === 'blue' && hasPlayerPlacedBlue) {
+                    startRow = playerSpawnRow;
+                    startCol = playerSpawnCol;
+
+                    // Validate player click location: must be within bounds and not too close to *already chosen* random spots
+                     let tooCloseToOthersFoundSoFar = false;
+                     for (const otherStartPos of tempChosenStartPoints) {
+                          if (getManhattanDistance({row: startRow, col: startCol}, otherStartPos) < minStartingDistance) {
+                             tooCloseToOthersFoundSoFar = true;
+                             console.warn(`Player-chosen spot for Blue at (${startRow}, ${startCol}) is too close to a previously determined civ's start point.`);
+                             break;
+                          }
+                     }
+
+                    // Check if the clicked spot is already occupied (should only be by walls/food if they existed before reset, but we clear them now)
+                    // isOccupiedForPlacement checks against the *current* game state (which should be empty when initGame is called before wall/food generation).
+                    // This check is mainly for robustness against unexpected states, though unlikely to fail here.
+                     const initiallyOccupied = isOccupiedForPlacement(startRow, startCol);
+
+                    if (startRow >= 0 && startRow < numRows && startCol >= 0 && startCol < numCols && !tooCloseToOthersFoundSoFar && !initiallyOccupied) {
+                        startPosChosen = true;
+                        console.log(`Using player-chosen start point for Blue at (${startRow}, ${startCol})`);
+                    } else {
+                         // Fallback to random if player spot is invalid, too close, or surprisingly occupied
+                         hasPlayerPlacedBlue = false; // Clear the player flag, force random fallback
+                         if (initiallyOccupied) console.warn(`Player-chosen spot for Blue at (${startRow}, ${startCol}) was surprisingly occupied initially.`);
+                         console.warn(`Player-chosen spot for Blue at (${startRow}, ${startCol}) invalid or too close. Falling back to random.`);
+                    }
+                }
+
+                // If startPosChosen is still false (for blue after failed click, or for any other civ)
+                if (!startPosChosen) {
+                     // Find a random suitable starting location
+                    let attemptsRandom = 0;
+                    while(!startPosChosen && attemptsRandom < maxStartPosAttempts) {
+                        attemptsRandom++;
+                        startRow = Math.floor(Math.random() * numRows);
+                        startCol = Math.floor(Math.random() * numCols);
+
+                        // Check bounds
+                         if (startRow < 0 || startRow >= numRows || startCol < 0 || startCol >= numCols) continue;
+
+                        // Check distance to *all* points already chosen in this determination phase
+                        let tooCloseToOthers = false;
+                        for (const chosenPos of tempChosenStartPoints) {
+                            if (getManhattanDistance({row: startRow, col: startCol}, chosenPos) < minStartingDistance) {
+                                tooCloseToOthers = true;
+                                break;
+                            }
+                        }
+
+                         // Also ensure the immediate 3x3 area around this potential random point is free from others already chosen
+                         // This helps prevent initial spawns from being right next to each other.
+                          let immediateAreaClear = true;
+                           for (let r = -1; r <= 1; r++) {
+                               for (let c = -1; c <= 1; c++) {
+                                   if (r === 0 && c === 0) continue; // Skip the center
+                                   const neighborRow = startRow + r;
+                                   const neighborCol = startCol + c;
+                                   for (const chosenPos of tempChosenStartPoints) {
+                                       if (chosenPos.row === neighborRow && chosenPos.col === neighborCol) {
+                                            immediateAreaClear = false;
+                                            break;
+                                       }
+                                   }
+                                   if (!immediateAreaClear) break;
+                               }
+                               if (!immediateAreaClear) break;
+                           }
+
+
+                        // Check if this specific point is available *on the currently empty grid*
+                        // isOccupiedForPlacement checks against *current* state (empty lists of civs, walls, food)
+                         if (!tooCloseToOthers && immediateAreaClear && !isOccupiedForPlacement(startRow, startCol)) {
+                             startPosChosen = true;
+                              // console.log(`Found random start point for ${civType.color} at (${startRow}, ${startCol}) after ${attemptsRandom} attempts.`);
+                         }
+                    }
+
+                    // Fallback if finding a suitable random spot fails after many attempts
+                    if (!startPosChosen) {
+                         console.warn(`Unable to find a suitable random start point for ${civType.color} after ${maxStartPosAttempts} attempts. Forcing a random spot.`);
+                         // As a last resort, find *any* empty spot. This might still be too close or in a bad location.
+                         let forcedAttempts = 0;
+                         while(forcedAttempts < 1000) {
+                              startRow = Math.floor(Math.random() * numRows);
+                              startCol = Math.floor(Math.random() * numCols);
+                              if (startRow >= 0 && startRow < numRows && startCol >= 0 && startCol < numCols && !isOccupiedForPlacement(startRow, startCol)) {
+                                   startPosChosen = true;
+                                   console.log(`Forcing fallback start point for ${civType.color} at (${startRow}, ${startCol})`);
+                                   break;
+                              }
+                             forcedAttempts++;
+                         }
+                         if(!startPosChosen) {
+                             console.error(`Failed to find ANY spot for ${civType.color} after ${1000} forced attempts! This civ will not spawn.`);
+                              // Set coordinates outside the grid to prevent spawning later
+                             startRow = -1; startCol = -1;
+                             startPosChosen = true; // Mark as chosen to exit loop, even if it's a bad spot
+                         }
+                    }
+                }
+                 // Store the final, single determined starting point for this civ type (if valid)
+                 if (startRow >= 0 && startCol >= 0) {
+                     finalCivStartPoints.push({ row: startRow, col: startCol, color: civType.color, name: civType.name });
+                     // Add this point to the temporary list for distance checks for subsequent civs
+                     tempChosenStartPoints.push({ row: startRow, col: startCol });
+                 }
+            }
+            console.log("Final determined single start points:", finalCivStartPoints);
+
+
+            // --- Step 2: Generate Walls, Avoiding the Final Determined Starting Areas ---
+            // We need a list of the *final* start points (just row/col) for isNearAnyStartingPosition
+             const civStartingPositionsForWallAvoidance = finalCivStartPoints.map(p => ({ row: p.row, col: p.col }));
+             // Generate walls, passing the points to avoid
+            generateWalls(numInitialWalls, minWallLength, maxWallLength, civStartingPositionsForWallAvoidance, startingZoneRadius);
+
+
+            // --- Step 3: Spawn Exactly ONE Unit at Each Determined Final Starting Point ---
+            // Iterate through the list of determined start points and attempt to place the single unit
+            let totalUnitsSpawned = 0;
+            for (const finalPosData of finalCivStartPoints) {
+                 const spawnRow = finalPosData.row;
+                 const spawnCol = finalPosData.col;
+                 const civColor = finalPosData.color;
+                 const civName = finalPosData.name;
+
+
+                 // Attempt to add the civilization unit at the final determined spot.
+                 // addCivilization contains the isOccupiedForPlacement check.
+                 // This check is crucial here because walls (generated in Step 2)
+                 // might occupy the spot despite our best efforts in Step 1 (though wall generation
+                 // tries to avoid the areas).
+                 if (!isOccupiedForPlacement(spawnRow, spawnCol)) {
+                     addCivilization(spawnRow, spawnCol, civColor, civName); // Pass name too
+                     totalUnitsSpawned++;
+                 } else {
+                     console.warn(`Final spawn position for ${civColor} at (${spawnRow}, ${spawnCol}) is occupied by a wall or food. Cannot spawn initial unit.`);
+                     // If the spot is occupied, the civ unit simply doesn't spawn initially.
+                 }
+            }
+             console.log(`Attempted to spawn ${finalCivStartPoints.length} initial units. Successfully spawned ${totalUnitsSpawned}.`);
+
+
+            // --- Step 4: Generate Food (Apples and Carrots) ---
+            // Food generation uses isOccupiedForPlacement, which will now correctly avoid walls and all spawned initial civ units.
+            generateApples(numInitialApples);
+            generateCarrots(numInitialCarrots);
+
+
+            // Redraw the COMPLETE game state after all initial placement is done
+            // drawGrid() is called by resizeCanvas() in prepareGameArea() and at start of updateGame()
+            drawWalls(); // Draw walls
+            drawCivilizations(); // Draw civs at their NEW positions
+            drawApples(); // Draw remaining apples
+            drawCarrots(); // Draw remaining carrots
+            updateCharacteristicsDisplay(); // Update statistics display with the latest data
+
+            console.log("Jeu initialisé et peuplé.");
+
+             // Player placement state is used *before* this function, reset after.
+            // hasPlayerPlacedBlue = false; // This is handled by resetGame/prepareGameArea now.
+            // playerSpawnRow = -1;
+            // playerSpawnCol = -1;
+        }
+
+
+        // Draw grid lines and background
+        function drawGrid() {
+            ctx.fillStyle = '#8FBC8F'; // Green background
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)'; // Semi-transparent black lines
+            ctx.beginPath();
+            // Draw horizontal lines using cellSize
+            for (let i = 0; i <= numRows; i++) {
+                ctx.moveTo(0, i * cellSize);
+                ctx.lineTo(canvas.width, i * cellSize);
+            }
+            // Draw vertical lines using cellSize
+            for (let j = 0; j <= numCols; j++) {
+                ctx.moveTo(j * cellSize, 0);
+                ctx.lineTo(j * cellSize, canvas.height);
+            }
+            ctx.stroke();
+        }
+
+        // Add a new civilization unit to the game (used on init and for reproduction)
+        // This function now assumes it is given a desired spawn row/col and validates it *before* adding.
+        function addCivilization(row, col, color, name) {
+             // Check if cell is already occupied by anything BEFORE adding
+             // isOccupiedForPlacement checks civs, walls, apples, and carrots.
+             // This is important to prevent spawning on top of existing things.
+             if (!isOccupiedForPlacement(row, col)) {
+                 const civilization = {
+                     row, // Row position on the grid
+                     col, // Column position on the grid
+                     color, // Civilization color
+                     name, // Civilization name (e.g., 'Blue')
+                     size: 1, // Size (currently unused for drawing)
+                     lastMoveTime: Date.now(), // Timestamp of last movement
+                     speed: initialSpeedBaseMultiplier, // Initial speed multiplier (1 tile per base interval)
+                     strength: 1, // Strength (currently unused)
+                     population: 1, // Number of individuals for this unit (always 1 for a new unit)
+                     direction: { row: 0, col: 0 }, // Current movement direction (initial 0,0)
+                     targetApple: null, // Store the targeted apple object (null if not targeting one)
+                     targetCarrot: null // Store the targeted carrot object (null if not targeting one)
+                 };
+                 civilizations.push(civilization);
+                  // console.log(`Added ${name} (${color}) unit at (${row}, ${col})`); // Suppressed for fewer logs during bulk init
+             } else {
+                 // This warning is more likely during initial spawn attempts or reproduction if placement fails
+                 console.warn(`Unable to add ${name} (${color}) unit at (${row}, ${col}) because it's occupied.`);
+             }
+        }
+
+        // Draw all civilization units on the canvas
+        // Uses cellSize to draw each civilization at the correct scale and position
+        function drawCivilizations() {
+            civilizations.forEach(civ => {
+                ctx.fillStyle = civ.color;
+                // Draw a square for each civ using its grid position and cellSize
+                ctx.fillRect(civ.col * cellSize, civ.row * cellSize, cellSize, cellSize);
+            });
+        }
+
+        // Generate random positions for red apples
+        function generateApples(count) {
+            apples = []; // Clear existing apples
+            const maxAttemptsPerApple = 300; // Increased attempts for placement
+
+            for (let i = 0; i < count; i++) {
+                 let applePlaced = false;
+                 let attempts = 0;
+                 while(!applePlaced && attempts < maxAttemptsPerApple) {
+                     let row = Math.floor(Math.random() * numRows);
+                     let col = Math.floor(Math.random() * numCols);
+                     // Find a random cell not occupied for the apple (using isOccupiedForPlacement) during PLACEMENT
+                     // This check correctly considers walls and initial civ units already placed
+                     if (!isOccupiedForPlacement(row, col)) {
+                         // Add apple with isTargeted flag (initially false)
+                         apples.push({ row, col, color: 'red', isTargeted: false });
+                         applePlaced = true;
+                     }
+                     attempts++;
+                 }
+                 if (!applePlaced) {
+                     console.warn(`Impossible de placer la pomme ${i + 1} après ${maxAttemptsPerApple} tentatives.`);
+                 }
+            }
+            console.log(`Généré ${apples.length} pommes.`);
+        }
+
+        // Draw all apples on the canvas
+        // Uses cellSize to draw each apple at the correct scale and position
+        function drawApples() {
+            apples.forEach(apple => {
+                ctx.fillStyle = apple.color;
+                // Draw a square for each apple using its grid position and cellSize
+                ctx.fillRect(apple.col * cellSize, apple.row * cellSize, cellSize, cellSize);
+            });
+        }
+
+        // Generate random positions for yellow carrots
+        function generateCarrots(count) {
+            carrots = []; // Clear existing carrots
+             const maxAttemptsPerCarrot = 300; // Increased attempts for placement
+
+            for (let i = 0; i < count; i++) {
+                 let carrotPlaced = false;
+                 let attempts = 0;
+                 while(!carrotPlaced && attempts < maxAttemptsPerCarrot) {
+                     let row = Math.floor(Math.random() * numRows);
+                     let col = Math.floor(Math.random() * numCols);
+                     // Find a random cell not occupied for the carrot (using isOccupiedForPlacement) during PLACEMENT
+                     // This check correctly considers walls and initial civ units already placed
+                     if (!isOccupiedForPlacement(row, col)) {
+                         // Add carrot with isTargeted flag (initially false)
+                         carrots.push({ row: row, col: col, color: 'yellow', isTargeted: false });
+                         carrotPlaced = true;
+                     }
+                     attempts++;
+                 }
+                 if (!carrotPlaced) {
+                     console.warn(`Impossible de placer la carotte ${i + 1} après ${maxAttemptsPerCarrot} tentatives.`);
+                 }
+            }
+             console.log(`Généré ${carrots.length} carottes.`);
+        }
+
+        // Draw all carrots on the canvas
+        // Uses cellSize to draw each carrot at the correct scale and position
+        function drawCarrots() {
+            carrots.forEach(carrot => {
+                ctx.fillStyle = carrot.color;
+                // Draw a filled square at the carrot's (col, row) position, size cellSize
+                ctx.fillRect(carrot.col * cellSize, carrot.row * cellSize, cellSize, cellSize);
+            });
+        }
+
+
+         // Generate random positions for walls
+         // Takes desired count, min/max length, an array of {row, col} points to avoid placing walls near, and the avoidance radius.
+        function generateWalls(count, minLength, maxLength, avoidPoints, avoidRadius) {
+            walls = []; // Clear existing walls
+            const maxAttemptsPerWall = 500; // Increased attempts for generation
+
+            for (let i = 0; i < count; i++) {
+                let wallPlaced = false;
+                let attempts = 0;
+
+                while (!wallPlaced && attempts < maxAttemptsPerWall) {
+                    attempts++;
+                    const wallLength = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
+                    const isHorizontal = Math.random() > 0.5; // Random orientation
+
+                    let startRow, startCol;
+                    if (isHorizontal) {
+                        // Start column must allow the full length to fit
+                        startRow = Math.floor(Math.random() * numRows);
+                        startCol = Math.floor(Math.random() * (numCols - wallLength + 1));
+                    } else {
+                         // Start row must allow the full length to fit
+                        startRow = Math.floor(Math.random() * (numRows - wallLength + 1));
+                        startCol = Math.floor(Math.random() * numCols);
+                    }
+
+                    let canPlaceWall = true;
+                    let potentialSegments = [];
+
+                    // Check if all potential segments are valid for placement
+                    for (let j = 0; j < wallLength; j++) {
+                        let segmentRow, segmentCol;
+                        if (isHorizontal) {
+                            segmentRow = startRow;
+                            segmentCol = startCol + j;
+                        } else {
+                            segmentRow = startRow + j;
+                            segmentCol = startCol;
+                        }
+
+                        // Check bounds
+                        if (segmentRow < 0 || segmentRow >= numRows || segmentCol < 0 || segmentCol >= numCols) {
+                            canPlaceWall = false;
+                            break;
+                        }
+
+                        // Check if occupied by existing walls OR near any of the specified avoidance points
+                         if (isWallSegmentOccupied(segmentRow, segmentCol) || isNearAnyStartingPosition({row: segmentRow, col: segmentCol}, avoidPoints, avoidRadius)) {
+                             canPlaceWall = false;
+                             break;
+                         }
+
+                        potentialSegments.push({ row: segmentRow, col: segmentCol });
+                    }
+
+                    // If the wall can be placed, add segments to the walls array
+                    if (canPlaceWall) {
+                        walls.push(...potentialSegments);
+                        wallPlaced = true;
+                         // console.log(`Wall of length ${wallLength} placed.`);
+                    }
+                }
+                if (!wallPlaced) {
+                     console.warn(`Impossible de placer le mur ${i + 1} après ${maxAttemptsPerWall} tentatives.`);
+                }
+            }
+             console.log(`Généré un total de ${walls.length} segments de mur sur ${walls.length > 0 ? count : 0} murs.`); // Use 'count' as the intended number of walls
+        }
+
+         // Helper function to check if a cell is occupied by an existing wall segment
+         function isWallSegmentOccupied(row, col) {
+             for (const wallSegment of walls) {
+                 if (wallSegment.row === row && wallSegment.col === col) {
+                     return true;
+                 }
+             }
+             return false;
+         }
+
+         // Helper function to check if a cell is near ANY of the specified points
+         // Used by generateWalls to avoid blocking areas.
+         function isNearAnyStartingPosition(point, pointsToAvoid, avoidRadius) {
+             for (const startPos of pointsToAvoid) {
+                  // Check if the cell is within the protected radius around this starting point
+                  if (getManhattanDistance(point, startPos) < avoidRadius) {
+                      return true; // Cell is too close to an avoidance point
+                  }
+             }
+             return false; // Not near any avoidance point
+         }
+
+
+         // Draw all wall segments on the canvas
+        // Uses cellSize to draw each wall segment at the correct scale and position
+        function drawWalls() {
+            ctx.fillStyle = '#444'; // Dark grey color for walls
+            walls.forEach(wallSegment => {
+                // Draw wall segments as squares filling the cell
+                ctx.fillRect(wallSegment.col * cellSize, wallSegment.row * cellSize, cellSize, cellSize);
+            });
+             // console.log(`Drawing ${walls.length} wall segments.`); // Suppressed for fewer logs
+        }
+
+
+        // Check if a cell is occupied by a civilization unit or a wall segment.
+        // This is used for movement logic. Civs CAN move onto food tiles, so food does NOT make a tile "occupied" for movement.
+        function isOccupied(row, col) {
+            // Check if out of bounds
+            if (row < 0 || row >= numRows || col < 0 || col >= numCols) {
+                return true; // Treat out of bounds as occupied/blocked
+            }
+
+            // Check for other civilization units
+            for (const civ of civilizations) {
+                if (civ.row === row && civ.col === col) {
+                    return true;
+                }
+            }
+            // Check for walls
+             for (const wallSegment of walls) {
+                 if (wallSegment.row === row && wallSegment.col === col) {
+                     return true;
+                 }
+             }
+            return false; // Cell is not occupied by a civilization unit or wall (food does not prevent movement)
+        }
+
+        // Check if a cell is occupied by a civilization unit, a wall, or any food (apple/carrot).
+        // This is used for initial placement of civs, walls, and food, and for spawning new units after reproduction.
+        // A cell must be completely empty to place something new there.
+        function isOccupiedForPlacement(row, col) {
+             // Check if out of bounds
+            if (row < 0 || row >= numRows || col < 0 || col >= numCols) {
+                return true; // Treat out of bounds as occupied
+            }
+
+            // Check for civilizations
+            for (const civ of civilizations) {
+                if (civ.row === row && civ.col === col) {
+                    return true;
+                }
+            }
+            // Check for walls
+             for (const wallSegment of walls) {
+                 if (wallSegment.row === row && wallSegment.col === col) {
+                     return true;
+                 }
+             }
+             // Check for food (apples and carrots)
+             for (const apple of apples) {
+                 if (apple.row === row && apple.col === col) {
+                     return true;
+                 }
+             }
+             for (const carrot of carrots) {
+                 if (carrot.row === row && carrot.col === col) {
+                     return true;
+                 }
+             }
+
+            return false; // Cell is not occupied by anything that prevents placement
+        }
+
+
+        // Find the nearest AVAILABLE apple (not currently targeted by any civ) within detection radius
+        function findNearestAvailableApple(civRow, civCol) {
+            let nearestApple = null;
+            let minDistance = Infinity;
+
+            for (const apple of apples) {
+                // Only consider apples that are NOT currently targeted AND are within the detection radius
+                const distance = getManhattanDistance({row: civRow, col: civCol}, apple);
+                if (!apple.isTargeted && distance <= detectionRadius) {
+                    // Check if this is the closest available apple found so far
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestApple = apple;
+                    }
+                }
+            }
+            return nearestApple; // Returns the apple object found (or null if none available in radius)
+        }
+
+        // Find the nearest AVAILABLE carrot (not currently targeted by any civ) within detection radius
+        function findNearestAvailableCarrot(civRow, civCol) {
+            let nearestCarrot = null;
+            let minDistance = Infinity;
+
+            for (const carrot of carrots) {
+                 // Only consider carrots that are NOT currently targeted AND are within the detection radius
+                 const distance = getManhattanDistance({row: civRow, col: civCol}, carrot);
+                 if (!carrot.isTargeted && distance <= detectionRadius) {
+                     // Check if this is the closest available carrot found so far
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestCarrot = carrot;
+                    }
+                 }
+            }
+            return nearestCarrot; // Returns the carrot object found (or null if none available in radius)
+        }
+
+
+        // Update civilization's movement direction towards a target (with simple obstacle avoidance)
+        // This function modifies the civ.direction based on the target and obstacles.
+        function updateCivilizationDirection(civ, targetRow, targetCol) {
+            const deltaRow = targetRow - civ.row;
+            const deltaCol = targetCol - civ.col;
+
+            // Calculate the preferred direction towards the target (axial or diagonal)
+            let preferredDirection = { row: 0, col: 0 };
+
+            // Determine the primary axis of movement
+             if (Math.abs(deltaRow) > Math.abs(deltaCol)) {
+                 preferredDirection.row = (deltaRow > 0) ? 1 : -1;
+                 // If also need to move horizontally, add that component
+                 if (deltaCol !== 0) preferredDirection.col = (deltaCol > 0 ? 1 : -1);
+             } else if (Math.abs(deltaCol) > Math.abs(deltaRow)) {
+                 preferredDirection.col = (deltaCol > 0) ? 1 : -1;
+                 // If also need to move vertically, add that component
+                 if (deltaRow !== 0) preferredDirection.row = (deltaRow > 0 ? 1 : -1);
+             } else {
+                 // If distances are equal (or both 0), try pure diagonal or axial if target not reached
+                 if (deltaRow !== 0 || deltaCol !== 0) {
+                     preferredDirection.row = (deltaRow > 0) ? 1 : (deltaRow < 0 ? -1 : 0);
+                     preferredDirection.col = (deltaCol > 0) ? 1 : (deltaCol < 0 ? -1 : 0);
+                 }
+                 // If deltaRow and deltaCol are both 0, target is reached, direction remains {0,0} - handled below
+             }
+
+
+            const nextRowPreferred = civ.row + preferredDirection.row;
+            const nextColPreferred = civ.col + preferredDirection.col;
+
+             // If target is reached, stop moving
+             if (deltaRow === 0 && deltaCol === 0) {
+                 civ.direction = { row: 0, col: 0 };
+                 return; // Target reached, no movement needed
+             }
+
+            // Check if the preferred next position is occupied by a civilization or a wall
+            // Note: isOccupied allows movement onto food tiles (apples and carrots)
+            if (!isOccupied(nextRowPreferred, nextColPreferred)) {
+                civ.direction = preferredDirection; // Use preferred direction if not occupied
+            } else {
+                // If the preferred direction is blocked, try alternative directions that get closest to the target
+                // Get all possible directions (axial + diagonal)
+                 const allDirections = [
+                    { dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }, // Axial
+                    { dr: -1, dc: -1 }, { dr: -1, dc: 1 }, { dr: 1, dc: -1 }, { dr: 1, dc: 1 } // Diagonal
+                 ];
+
+                // Filter out directions that lead to an occupied cell (civ or wall)
+                const availableDirections = allDirections.filter(dir => !isOccupied(civ.row + dir.dr, civ.col + dir.dc));
+
+                if (availableDirections.length > 0) {
+                    // Sort available directions by Manhattan distance to the target, closest first
+                    availableDirections.sort((a, b) => {
+                         const posA = { row: civ.row + a.dr, col: civ.col + a.dc };
+                         const posB = { row: civ.row + b.dr, col: civ.col + b.dc };
+                         const distA = getManhattanDistance(posA, {row: targetRow, col: targetCol});
+                         const distB = getManhattanDistance(posB, {row: targetRow, col: targetCol});
+                         return distA - distB; // Sort by increasing distance
+                    });
+
+                    // Use the best available direction
+                    civ.direction = { row: availableDirections[0].dr, col: availableDirections[0].dc };
+                } else {
+                    // If no valid alternative found (surrounded), stay put
+                    civ.direction = { row: 0, col: 0 };
+                     // If the civ was targeting food and got completely blocked, release the target
+                     // This helps prevent stuck civs from holding onto targets forever.
+                     if (civ.targetApple) {
+                         const currentTargetApple = apples.find(apple => apple === civ.targetApple);
+                          if (currentTargetApple) { currentTargetApple.isTargeted = false; } // Release the flag
+                         civ.targetApple = null; // Forget the target
+                          // console.log(`Civ at (${civ.row}, ${civ.col}) blocked, released apple target.`);
+                     } else if (civ.targetCarrot) {
+                          const currentTargetCarrot = carrots.find(carrot => carrot === civ.targetCarrot);
+                          if (currentTargetCarrot) { currentTargetCarrot.isTargeted = false; } // Release the flag
+                         civ.targetCarrot = null; // Forget the target
+                          // console.log(`Civ at (${civ.row}, ${civ.col}) blocked, released carrot target.`);
+                     }
+                }
+            }
+        }
+
+        // Create a new civilization unit (used after eating an apple)
+        // Attempts to find a free tile near the 'fromPos' ({row, col}) to spawn.
+        function createNewCivilization(color, name, fromPos) {
+             // Try to find a valid neighboring cell near the reproduction point to spawn a new unit
+             // getNeighborsForSpawn uses isOccupiedForPlacement which avoids civs, walls, and remaining food.
+             const neighborsAroundSpawnPoint = getNeighborsForSpawn(fromPos.row, fromPos.col);
+
+             if (neighborsAroundSpawnPoint.length > 0) {
+                 // Choose a random valid neighbor to spawn the new unit
+                 const spawnPos = neighborsAroundSpawnPoint[Math.floor(Math.random() * neighborsAroundSpawnPoint.length)];
+                 // Create a new civilization unit at the chosen spawn location
+                 addCivilization(spawnPos.row, spawnPos.col, color, name); // Use addCivilization to handle internal creation logic
+                  // console.log(`New ${name} (${color}) unit spawned at (${spawnPos.row}, ${spawnPos.col}) from reproduction near (${fromPos.row}, ${fromPos.col})`);
+             } else {
+                 console.warn(`Unable to find a free tile next to (${fromPos.row}, ${fromPos.col}) to spawn a new unit for ${name} (${color}).`);
+                 // If no space to spawn, no new unit is created for this reproduction
+             }
+        }
+
+        // Main game update loop
+        function updateGame() {
+            if (!isRunning) return; // Stop update if game is paused
+
+            const currentTime = Date.now();
+
+            // Iterate through each civilization, from end to start for safe removal (if removal was needed, not currently)
+            for (let i = civilizations.length - 1; i >= 0; i--) {
+                const civ = civilizations[i];
+
+                // Calculate the actual move interval based on base interval and civ's speed multiplier
+                const actualMoveInterval = baseMoveInterval / civ.speed;
+
+                // Check if enough time has passed for the next move
+                if (currentTime - civ.lastMoveTime >= actualMoveInterval) {
+
+                    let target = null; // The current target object (apple or carrot) reference
+                    let targetType = null; // 'apple' or 'carrot'
+
+
+                    // --- Step 1: Determine the Target ---
+
+                    // 1a: Check if the unit already has a targeted apple and if it's still valid (exists and is still targeted by *this* unit)
+                    if (civ.targetApple) {
+                        // Find the *current* apple object in the array that matches the stored target reference
+                        const currentTargetApple = apples.find(apple => apple === civ.targetApple);
+                        // If the targeted apple still exists in the array AND it is still marked as targeted (specifically by THIS unit's reference)
+                         // (Note: Checking `apple === civ.targetApple` implies it's the same object instance)
+                        if (currentTargetApple && currentTargetApple.isTargeted) {
+                            target = currentTargetApple; // Continue targeting this apple
+                            targetType = 'apple';
+                             // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) continues targeting apple at (${target.row}, ${target.col})`);
+                        } else {
+                             // The previously targeted apple is gone, or its target flag was somehow released by another unit's logic
+                            civ.targetApple = null; // Clear the unit's target
+                             // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) lost apple target.`);
+                        }
+                    }
+
+                    // 1b: If no apple target, check if the unit already has a targeted carrot and if it's still valid
+                     if (!target && civ.targetCarrot) {
+                         const currentTargetCarrot = carrots.find(carrot => carrot === civ.targetCarrot);
+                         // If the targeted carrot still exists AND is still targeted by this unit's reference
+                         if (currentTargetCarrot && currentTargetCarrot.isTargeted) {
+                             target = currentTargetCarrot; // Continue targeting this carrot
+                             targetType = 'carrot';
+                              // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) continues targeting carrot at (${target.row}, ${target.col})`);
+                         } else {
+                              // The previously targeted carrot is gone or flag released
+                             civ.targetCarrot = null; // Clear the unit's target
+                              // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) lost carrot target.`);
+                         }
+                    }
+
+                    // 1c: If no valid target from previous turn, look for a new one within detection radius
+                    if (!target) {
+                         // Find the nearest AVAILABLE food sources (not currently targeted by any civ)
+                         const nearestAvailableApple = findNearestAvailableApple(civ.row, civ.col);
+                         const nearestAvailableCarrot = findNearestAvailableCarrot(civ.row, civ.col);
+
+                         // Determine the target: prioritize the closest food source within detection radius
+                         if (nearestAvailableApple && nearestAvailableCarrot) {
+                             const distApple = getManhattanDistance(civ, nearestAvailableApple);
+                             const distCarrot = getManhattanDistance(civ, nearestAvailableCarrot);
+
+                             // Target the apple if it's strictly closer OR if the carrot is out of range
+                             // Otherwise, target the carrot if it's in range.
+                             // This gives a slight preference to apples at equal distance, but primarily goes for the closest one in range.
+                             if (distApple <= detectionRadius && (distApple < distCarrot || distCarrot > detectionRadius)) {
+                                 target = nearestAvailableApple;
+                                 targetType = 'apple';
+                             } else if (distCarrot <= detectionRadius) { // Only consider carrot if it's in range and apple wasn't better
+                                 target = nearestAvailableCarrot;
+                                 targetType = 'carrot';
+                             }
+                             // else: both are out of range or don't exist, target remains null
+                         } else if (nearestAvailableApple) {
+                             // Only an available apple in radius
+                             target = nearestAvailableApple;
+                             targetType = 'apple';
+                         } else if (nearestAvailableCarrot) {
+                             // Only an available carrot in radius
+                             target = nearestAvailableCarrot;
+                             targetType = 'carrot';
+                         }
+                         // else: target remains null if neither is found available in radius
+
+
+                         // 1d: If a NEW target is found, claim it and store it on the unit
+                         if (target) {
+                              target.isTargeted = true; // Claim the food item for this unit
+
+                             if (targetType === 'apple') {
+                                 civ.targetApple = target; // Store reference
+                                 civ.targetCarrot = null; // Ensure no carrot target
+                                  // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) is now targeting apple at (${target.row}, ${target.col})`);
+                             } else if (targetType === 'carrot') {
+                                 civ.targetCarrot = target; // Store reference
+                                 civ.targetApple = null; // Ensure no apple target
+                                  // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) is now targeting carrot at (${target.row}, ${target.col})`);
+                             }
+                         } else {
+                             // No target found in radius - ensure civ targets are cleared
+                             civ.targetApple = null;
+                             civ.targetCarrot = null;
+                              // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) no target found in radius.`);
+                         }
+                    }
+
+
+                    // --- Step 2: Calculate Movement Direction ---
+
+                    let nextRow, nextCol;
+                    if (target) {
+                        // If a target is found, update direction towards it, avoiding obstacles (walls and other civ units)
+                        updateCivilizationDirection(civ, target.row, target.col);
+                        // Calculate potential next position based on the calculated direction
+                         nextRow = civ.row + civ.direction.row;
+                         nextCol = civ.col + civ.direction.col;
+                    } else {
+                        // If no target in radius, attempt to move randomly to an available neighboring cell
+                        const neighbors = getNeighbors(civ.row, civ.col); // getNeighbors avoids occupied cells (civs/walls)
+                        if (neighbors.length > 0) {
+                            // Choose a random valid neighbor to move towards
+                            const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                             // Update direction based on the chosen neighbor
+                            civ.direction = { row: randomNeighbor.row - civ.row, col: randomNeighbor.col - civ.col };
+                             // Calculate potential next position based on random direction
+                             nextRow = civ.row + civ.direction.row;
+                             nextCol = civ.col + civ.direction.col;
+                             // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) moving randomly to (${nextRow}, ${nextCol})`);
+                        } else {
+                            // If no valid neighbors (e.g., surrounded by civs/walls and no food nearby), stay put
+                            civ.direction = { row: 0, col: 0 }; // Stay put
+                            nextRow = civ.row; // Next position is current position
+                            nextCol = civ.col;
+                             // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) is stuck.`);
+                             // Note: Target release if stuck is handled within updateCivilizationDirection now.
+                        }
+                    }
+
+
+                    // --- Step 3: Perform the Move and Handle Collisions ---
+
+                    // Check if the calculated next position is valid for movement (not occupied by another civ or a wall)
+                    // This check is necessary even if updateCivilizationDirection/getNeighbors found a spot,
+                    // as state might have changed slightly between finding the spot and attempting to move.
+                     if (!isOccupied(nextRow, nextCol)) {
+                         // *** The actual move happens here ***
+                         civ.row = nextRow; // Update the civilization's row
+                         civ.col = nextCol; // Update the civilization's col
+
+                         // Check for collision with apples AFTER moving onto the new cell
+                         // Find the apple at the civilization's NEW position
+                         const appleIndex = apples.findIndex(apple => apple.row === civ.row && apple.col === civ.col);
+                         if (appleIndex !== -1) {
+                             // Collision with an apple: Eat apple and reproduce
+
+                             // --- DEBUG LOGGING ---
+                             console.log(`🍎 EATEN: ${civ.name} (${civ.color}) Civ at (${civ.row}, ${civ.col}) ate Apple at (${apples[appleIndex].row}, ${apples[appleIndex].col})`);
+                             // ---------------------
+
+                             // Get the apple object *before* removing it
+                             const eatenApple = apples[appleIndex];
+
+                             // Release the apple's targeted flag
+                              eatenApple.isTargeted = false; // Explicitly release the flag
+
+                             // If this unit was specifically targeting this apple, clear its target reference
+                             if (civ.targetApple === eatenApple) {
+                                 civ.targetApple = null; // Clear the unit's target reference
+                             }
+
+                             // Remove the eaten apple from the array
+                             apples.splice(appleIndex, 1);
+
+                             // If the unit was also targeting a carrot, release it (only one target at a time)
+                              if (civ.targetCarrot) {
+                                const currentTargetCarrot = carrots.find(carrot => carrot === civ.targetCarrot);
+                                if (currentTargetCarrot) { currentTargetCarrot.isTargeted = false; }
+                                civ.targetCarrot = null;
+                              }
+
+                             // Try to spawn a new unit of the same color and name near where the apple was eaten
+                             createNewCivilization(civ.color, civ.name, {row: civ.row, col: civ.col});
+
+                             // The existing unit's population count increases
+                             civ.population += 1; // Increase the population count of the unit that ate (represents successful reproduction -> +1 unit)
+                         }
+
+                         // Check for collision with carrots AFTER moving onto the new cell
+                         // Find the carrot at the civilization's NEW position
+                         const carrotIndex = carrots.findIndex(carrot => carrot.row === civ.row && carrot.col === civ.col);
+                         if (carrotIndex !== -1) {
+                             // Collision with a carrot: Eat the carrot and increase speed
+
+                             // --- DEBUG LOGGING ---
+                              console.log(`🥕 EATEN: ${civ.name} (${civ.color}) Civ at (${civ.row}, ${civ.col}) ate Carrot at (${carrots[carrotIndex].row}, ${carrots[carrotIndex].col}). Old speed: ${civ.speed.toFixed(2)}x`);
+                             // ---------------------
+
+                              // Get the carrot object *before* removing it
+                             const eatenCarrot = carrots[carrotIndex];
+
+                              // Release the carrot's targeted flag
+                              eatenCarrot.isTargeted = false; // Explicitly release the flag
+
+                              // If this unit was specifically targeting this carrot, clear its target reference
+                              if (civ.targetCarrot === eatenCarrot) {
+                                   civ.targetCarrot = null; // Clear the unit's target reference
+                              }
+
+                             // Remove the eaten carrot from the array
+                             carrots.splice(carrotIndex, 1);
+
+                             // If the unit was also targeting an apple, release it (only one target at a time)
+                             if (civ.targetApple) {
+                                 const currentTargetApple = apples.find(apple => apple === civ.targetApple);
+                                  if (currentTargetApple) { currentTargetApple.isTargeted = false; }
+                                 civ.targetApple = null;
+                             }
+
+                             // Increase the speed multiplier of the civilization unit that ate the carrot
+                             civ.speed += carrotSpeedIncreaseMultiplier;
+                              console.log(`🥕 Speed increased to ${civ.speed.toFixed(2)}x`);
+
+                         }
+
+                     } else {
+                         // If the calculated next position was occupied (by another unit or a wall), the unit does not move.
+                         // The direction might have been adjusted in updateCivilizationDirection, but if even alternatives
+                         // lead to blocked cells, the unit stays put.
+                         civ.direction = { row: 0, col: 0 }; // Force direction to stay put if movement is blocked
+                         // If the unit was targeting food and couldn't move towards it (blocked just before),
+                         // then the target is not immediately reachable, so we release it.
+                         if (civ.targetApple) { // targetApple is used for exclusive apple targeting
+                             const currentTargetApple = apples.find(apple => apple === civ.targetApple);
+                             if (currentTargetApple) { // Make sure the apple object still exists
+                                currentTargetApple.isTargeted = false; // Release the target flag on the apple object
+                             }
+                             civ.targetApple = null; // Clear the unit's target
+                              // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) blocked, released apple target.`);
+                         } else if (civ.targetCarrot) { // Release carrot target if blocked
+                             const currentTargetCarrot = carrots.find(carrot => carrot === civ.targetCarrot);
+                             if (currentTargetCarrot) { // Make sure the carrot object still exists
+                                 currentTargetCarrot.isTargeted = false; // Release the target flag
+                             }
+                             civ.targetCarrot = null; // Clear the unit's target
+                              // console.log(`${civ.name} (${civ.color}) at (${civ.row}, ${civ.col}) blocked, released carrot target.`);
+                         }
+                     }
+
+                    // Update the last move timestamp, EVEN if the unit couldn't move.
+                    // This is crucial so that movements are spaced correctly based on speed,
+                    // even if a unit is blocked for a turn. It prevents units from trying to move
+                    // again instantly if blocked.
+                    civ.lastMoveTime = currentTime;
+
+                } // End of movement interval check
+            } // End of for loop over civilizations
+
+            // --- Post-Update Actions ---
+            // Check for game over conditions (e.g., no more food, population extinct?)
+            if (apples.length === 0 && carrots.length === 0 && civilizations.length > 0 && isRunning) {
+                // Add check if all civs are stuck (no valid moves possible from their current positions)
+                 const allCivsStuck = civilizations.every(civ => getNeighbors(civ.row, civ.col).length === 0);
+                 if (allCivsStuck) {
+                     displayMessage('Le jeu est terminé ! Toutes les civilisations sont bloquées et il n\'y a plus de nourriture.');
+                     pauseGame(); // Automatically pause the game
+                     console.log("Game Over: All civs stuck with no food left.");
+                 } else if (apples.length === 0 && carrots.length === 0) {
+                      displayMessage('Le jeu est terminé ! Il n\'y a plus de nourriture.');
+                     // Don't necessarily pause if civs can still move around
+                     console.log("Game Over: No food left.");
+                 }
+            } else if (civilizations.length === 0 && isRunning) {
+                 displayMessage('Le jeu est terminé ! Toutes les civilisations ont disparu.');
+                 pauseGame();
+                 console.log("Game Over: All civilizations are extinct.");
+            }
+
+
+            // Redraw the COMPLETE game state after all updates to positions and consumed items
+            drawGrid(); // Draw the background grid
+            drawWalls(); // Draw walls
+            drawCivilizations(); // Draw civs at their NEW positions
+            drawApples(); // Draw remaining apples
+            drawCarrots(); // Draw remaining carrots
+            updateCharacteristicsDisplay(); // Update statistics display with the latest data
+
+            // Request the next animation frame to continue the loop
+            animationFrameId = requestAnimationFrame(updateGame);
+        }
+
+        // Get valid neighboring cells (within bounds and not occupied by other civs or walls)
+        // Used primarily by movement logic (`updateCivilizationDirection`'s fallback and random moves)
+        function getNeighbors(row, col) {
+            const neighbors = [];
+            // Define possible relative positions for neighbors (including diagonals)
+            const possibleRelativePositions = [
+                { dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }, // Axial
+                { dr: -1, dc: -1 }, { dr: -1, dc: 1 }, { dr: 1, dc: -1 }, { dr: 1, dc: 1 } // Diagonal
+            ];
+
+            for (const p of possibleRelativePositions) {
+                 const neighborRow = row + p.dr;
+                 const neighborCol = col + p.dc;
+                // Check if the neighbor is within grid bounds AND is not occupied by a civilization or wall
+                // Note: isOccupied allows movement onto food tiles (apples and carrots).
+                if (!isOccupied(neighborRow, neighborCol)) {
+                     neighbors.push({ row: neighborRow, col: neighborCol });
+                }
+            }
+            return neighbors;
+        }
+
+         // Get valid neighboring cells for spawning (within bounds and not occupied by anything: civ, wall, apple, carrot)
+         // Used to find a free tile to spawn a new unit after eating an apple
+        function getNeighborsForSpawn(row, col) {
+            const neighbors = [];
+            // Define possible relative positions for neighbors (including diagonals)
+             const possibleRelativePositions = [
+                { dr: -1, dc: 0 }, { dr: 1, dc: 0 }, { dr: 0, dc: -1 }, { dr: 0, dc: 1 }, // Axial
+                { dr: -1, dc: -1 }, { dr: -1, dc: 1 }, { dr: 1, dc: -1 }, { dr: 1, dc: 1 } // Diagonal
+            ];
+
+            for (const p of possibleRelativePositions) {
+                 const neighborRow = row + p.dr;
+                 const neighborCol = col + p.dc;
+                // Check if the neighbor is within grid bounds AND is not occupied by ANYTHING
+                 if (!isOccupiedForPlacement(neighborRow, neighborCol)) {
+                     neighbors.push({ row: neighborRow, col: neighborCol });
+                 }
+            }
+            return neighbors;
+        }
+
+
+        // Start the game simulation
+        function startGame() {
+            // Only start if the game is NOT running
+            if (!isRunning) {
+                 // If civilizations array is empty, the game hasn't been initialized yet (first start or after reset)
+                 if (civilizations.length === 0) {
+                     initGame(); // Initialize the game state (spawns civs, walls, food based on config/player choice)
+                     // initGame also calls draw and updateCharacteristicsDisplay
+                 }
+
+                // Check if initialization resulted in any spawned civilizations
+                 if (civilizations.length > 0) {
+                     isRunning = true;
+                     requestAnimationFrame(updateGame); // Start or resume the animation loop
+                     displayMessage('Jeu démarré !');
+                     startButton.textContent = 'Pause'; // Change button text to 'Pause'
+                     pauseButton.textContent = 'Pause'; // Ensure Pause button is correct
+                 } else {
+                      // Should not happen if initGame logs show attempts, but good safeguard
+                      displayMessage('Erreur : Aucune civilisation n\'a pu être placée. Réessayez.');
+                      console.error("Game failed to start: No civilizations were successfully spawned after initialization.");
+                 }
+
+            } else {
+                 // This case should not happen if button text logic is correct, but as a safeguard
+                 console.warn("Attempted to start game, but it was already running.");
+            }
+        }
+
+        // Pause the game simulation
+        function pauseGame() {
+            if (isRunning) {
+                isRunning = false;
+                cancelAnimationFrame(animationFrameId); // Stop the animation loop
+                displayMessage('Jeu en pause !');
+                startButton.textContent = 'Reprendre'; // Change button text
+            }
+        }
+
+        // Reset the game to its initial state (clears everything and prepares for a new game)
+        function resetGame() {
+            pauseGame(); // Pause if running
+
+            // Clear all game data and reset player placement state
+            prepareGameArea(); // prepareGameArea handles clearing and resetting state
+
+            // Reset button text
+            startButton.textContent = 'Démarrer';
+             // prepareGameArea also updates the characteristics display to show 0s
+        }
+
+        // Display a message in the message box
+        function displayMessage(message) {
+            messageBox.textContent = message;
+            // console.log(`MESSAGE: ${message}`); // Log messages to console too
+        }
+
+        // Update the display of Civilization characteristics
+        function updateCharacteristicsDisplay() {
+             // Calculate total population and average speed for each civ color
+            const civStats = {};
+            civTypesToSpawn.forEach(type => {
+                const civsOfColor = civilizations.filter(civ => civ.color === type.color);
+                const totalPopulation = civsOfColor.reduce((sum, civ) => sum + civ.population, 0);
+                 // Calculate average speed only if there are units of this color
+                const averageSpeed = civsOfColor.length > 0
+                    ? (civsOfColor.reduce((sum, civ) => sum + civ.speed, 0) / civsOfColor.length) * (1000 / baseMoveInterval) // Convert multiplier to squares per second
+                    : 0; // Speed is 0 if no units exist
+
+                civStats[type.color] = {
+                    population: totalPopulation,
+                    speed: averageSpeed
+                };
+            });
+
+
+            // Update the HTML elements for each color
+            bluePopulationDisplay.textContent = civStats['blue'] ? civStats['blue'].population : 0;
+             blueSpeedDisplay.textContent = civStats['blue'] && civStats['blue'].speed > 0 ? civStats['blue'].speed.toFixed(1) + " cases/sec" : "N/A";
+
+            purplePopulationDisplay.textContent = civStats['purple'] ? civStats['purple'].population : 0;
+             purpleSpeedDisplay.textContent = civStats['purple'] && civStats['purple'].speed > 0 ? civStats['purple'].speed.toFixed(1) + " cases/sec" : "N/A";
+
+            blackPopulationDisplay.textContent = civStats['black'] ? civStats['black'].population : 0;
+             blackSpeedDisplay.textContent = civStats['black'] && civStats['black'].speed > 0 ? civStats['black'].speed.toFixed(1) + " cases/sec" : "N/A";
+
+            greenPopulationDisplay.textContent = civStats['green'] ? civStats['green'].population : 0;
+             greenSpeedDisplay.textContent = civStats['green'] && civStats['green'].speed > 0 ? civStats['green'].speed.toFixed(1) + " cases/sec" : "N/A";
+
+             // console.log("Stats Updated:", civStats); // Log stats update
+        }
+
+
+        // Event listeners for buttons
+        startButton.addEventListener('click', startGame);
+        pauseButton.addEventListener('click', pauseGame);
+        resetButton.addEventListener('click', resetGame);
+
+        // Event listeners for the instructions modal
+        instructionsButton.addEventListener('click', () => {
+            instructionsModal.style.display = "block"; // Show the modal
+        });
+        closeButton.addEventListener('click', () => {
+            instructionsModal.style.display = "none"; // Hide the modal
+        });
+        // Hide the modal if the user clicks outside of it
+        window.addEventListener('click', (event) => {
+            if (event.target === instructionsModal) {
+                instructionsModal.style.display = "none";
+            }
+        });
+
+         // Event listener for clicking on the canvas to place blue civ start
+         canvas.addEventListener('click', (event) => {
+             // Only allow placement click if the game is NOT running AND hasn't been initialized yet (civs array is empty)
+             // This prevents clicks while game is running or paused after start/reset.
+             if (!isRunning && civilizations.length === 0) {
+                 // Calculate grid coordinates from click position
+                 const rect = canvas.getBoundingClientRect(); // Get canvas position and size relative to viewport
+                 const clickX = event.clientX - rect.left; // X coordinate inside canvas
+                 const clickY = event.clientY - rect.top;   // Y coordinate inside canvas
+
+                 // Convert pixel coordinates to grid coordinates using current cellSize
+                 // Ensure cellSize is calculated (it is in resizeCanvas which is called by prepareGameArea/onload)
+                 if (cellSize > 0) {
+                     const row = Math.floor(clickY / cellSize);
+                     const col = Math.floor(clickX / cellSize);
+
+                     // Check if the clicked position is within the grid bounds
+                     if (row >= 0 && row < numRows && col >= 0 && col < numCols) {
+                          // Check if this cell is occupied (should be empty at this stage, but robust)
+                           if (!isOccupiedForPlacement(row, col)) {
+                              // Store the chosen position
+                              playerSpawnRow = row;
+                              playerSpawnCol = col;
+                              hasPlayerPlacedBlue = true; // Set the flag
+
+                              // Provide feedback to the player
+                              displayMessage(`Emplacement de la civilisation bleue choisi : (${col}, ${row}). Cliquez sur 'Démarrer'.`);
+
+                              // Optional: Could draw a temporary marker here if desired, but complicates draw logic.
+                              // For now, just update message.
+                           } else {
+                                // This case should ideally not happen if the grid is empty when allowing clicks
+                                displayMessage('Ce tile est occupé. Veuillez en choisir un autre.');
+                           }
+
+                     } else {
+                         displayMessage('Veuillez cliquer à l\'intérieur de la grille.');
+                     }
+                 } else {
+                      console.warn("cellSize not calculated yet, cannot process click.");
+                 }
+             } else if (!isRunning && civilizations.length > 0) {
+                 // Game is paused but already started - player needs to reset to choose
+                 displayMessage('Le jeu a déjà démarré. Cliquez sur "Réinitialiser" pour choisir un nouvel emplacement.');
+             }
+             // If isRunning is true, ignore clicks on canvas for placement
+         });
+
+
+        // Prepare the game area when the window is loaded, but DO NOT start the simulation automatically
+        window.addEventListener('load', prepareGameArea);
+        // Recalculate canvas size and redraw the *empty* grid when the window is resized
+        window.addEventListener('resize', resizeCanvas);
+
+    </script>
+</body>
+</html>
