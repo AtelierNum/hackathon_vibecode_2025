@@ -1,0 +1,2175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategic Blackjack Multiplayer (Per-Player Control)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Inter font import - optional, Tailwind uses sans-serif by default */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0F4D2C; /* Deep felt green */
+            color: #e2e8f0; /* Light text */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align items to the top */
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .game-container {
+            background-color: rgba(11, 60, 37, 0.8); /* Darker green with slight transparency */
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.7); /* Increased shadow */
+            width: 100%;
+            max-width: 1200px; /* Increased max-width for multiple players */
+            text-align: center;
+            margin-bottom: 20px; /* Space below the main container */
+            border: 2px solid rgba(246, 224, 94, 0.5); /* Subtle gold border */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .player-areas {
+            display: flex;
+            justify-content: center;
+            gap: 25px; /* Increased space between player areas */
+            margin-bottom: 25px;
+            width: 100%;
+            overflow-x: auto; /* Add overflow for horizontal scrolling */
+            padding-bottom: 10px; /* Add padding for scrollbar space */
+            box-sizing: border-box; /* Include padding in width calculation */
+        }
+
+        .player-area {
+            background-color: rgba(20, 65, 44, 0.9); /* Another dark green, slightly different opacity */
+            border-radius: 10px;
+            padding: 20px; /* Base padding */
+            max-width: 380px; /* Max width on larger screens */
+            text-align: center;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.4); /* Adjusted shadow */
+            border: 3px solid transparent; /* Default border, increased thickness */
+            transition: border-color 0.3s ease;
+            flex-grow: 1;
+            flex-shrink: 1;
+            flex-basis: 0;
+            min-width: 280px; /* Ensure a minimum width */
+        }
+
+        .player-area.current-turn {
+            border-color: #f6e05e; /* Gold border for current player */
+        }
+
+        .balance-bet-area {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(74, 85, 104, 0.5);
+        }
+        .hand-display {
+            margin-top: 20px; /* Added margin to separate from almanac */
+            margin-bottom: 20px;
+        }
+        .cards {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            min-height: 100px;
+            padding: 5px 0;
+        }
+        .card {
+            background-color: #fff;
+            color: #1a202c;
+            border-radius: 8px;
+            padding: 10px 15px;
+            width: 70px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+            flex-shrink: 0;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .card .suit {
+             font-size: 1.2em;
+        }
+        .card.hidden {
+            background-color: #1A5A39;
+            color: #a0aec0;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            background-image: repeating-linear-gradient(
+                45deg, #14412C, #14412C 10px, #0B3C25 10px, #0B3C25 20px
+            );
+            color: rgba(255, 255, 255, 0.8);
+            border: none;
+            box-shadow: none;
+        }
+        .controls {
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 12px 25px;
+            margin: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+            border: none;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+         .btn:active:not(:disabled) {
+             transform: translateY(1px);
+             box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+         }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+             box-shadow: none;
+        }
+        .btn-primary {
+            background-color: #4299e1;
+            color: #fff;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: #3182ce;
+        }
+         .btn-secondary {
+            background-color: #718096;
+            color: #fff;
+        }
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #4a5568;
+        }
+        .btn-green {
+            background-color: #48bb78;
+            color: #fff;
+        }
+        .btn-green:hover:not(:disabled) {
+            background-color: #38a169;
+        }
+
+
+        /* Central Joker Almanac (Descriptive Only) */
+        .joker-almanac {
+            margin-top: 20px;
+            padding-top: 20px;
+             padding-bottom: 20px; /* Added padding below */
+            border-top: 1px solid rgba(74, 85, 104, 0.5);
+             border-bottom: 1px solid rgba(74, 85, 104, 0.5); /* Added bottom border */
+            width: 100%;
+             text-align: center;
+        }
+         .joker-almanac h3 {
+             color: #faf089;
+             text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+             margin-bottom: 15px; /* Added space below heading */
+         }
+        .almanac-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+        .almanac-card { /* Style for jokers in the descriptive list */
+             background-color: rgba(35, 80, 55, 0.5); /* More transparent */
+             width: 180px;
+             min-height: 150px;
+             border-radius: 8px;
+             padding: 15px;
+             text-align: left;
+             box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+             border: 1px solid rgba(226, 232, 240, 0.05); /* Lighter border */
+             color: #a0aec0;
+        }
+         .almanac-card h4 {
+             font-weight: bold;
+             margin-bottom: 5px;
+             color: #bee3f8;
+         }
+         .almanac-card p {
+             font-size: 0.85em; /* Slightly smaller text */
+             color: #a0aec0; /* Keep grey */
+         }
+        .almanac-card .base-price {
+             font-size: 0.8em; /* Smaller price text */
+             color: #a0aec0;
+        }
+
+
+        /* Per-Player Shop Area */
+        .player-shop-area {
+            margin-top: 20px;
+            padding-top: 15px; /* Reduced top padding */
+            border-top: 1px solid rgba(74, 85, 104, 0.5);
+            text-align: center;
+        }
+         .player-shop-area h4 {
+             color: #faf089;
+             text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+             margin-bottom: 10px;
+         }
+         .player-available-jokers-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px; /* Keep gap consistent */
+            min-height: 80px; /* Ensure space */
+         }
+
+        /* Style for Joker cards available FOR PURCHASE (inside player shop area) */
+        .buyable-joker-card {
+            background-color: rgba(35, 80, 55, 0.9); /* Solid dark green */
+            width: 180px;
+             min-height: 150px; /* Ensure consistent height */
+             border-radius: 8px;
+             padding: 15px;
+             text-align: left;
+             box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+             display: flex;
+             flex-direction: column;
+             justify-content: space-between;
+             border: 1px solid rgba(226, 232, 240, 0.1);
+        }
+         .buyable-joker-card h5 { /* Use h5 for title within the card */
+             font-weight: bold;
+             margin-bottom: 5px;
+             color: #bee3f8;
+              font-size: 1em; /* Match h4 size */
+         }
+         .buyable-joker-card p {
+             font-size: 0.9em;
+             color: #a0aec0;
+             flex-grow: 1;
+             margin-bottom: 10px;
+         }
+
+        .buy-button { /* Buy button styling reused */
+            background-color: #48bb78;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+            text-align: center;
+            transition: background-color 0.2s ease, opacity 0.2s ease;
+            border: none;
+            margin-top: auto;
+             box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        .buy-button:hover:not(:disabled) {
+            background-color: #38a169;
+        }
+         .buy-button:disabled {
+            background-color: #718096;
+            cursor: not-allowed;
+            opacity: 0.6;
+             box-shadow: none;
+        }
+
+
+        /* Player Active Jokers Display */
+        .joker-display-area {
+            margin-top: 20px;
+            padding-top: 15px; /* Reduced top padding */
+            border-top: 1px solid rgba(74, 85, 104, 0.5);
+            text-align: center;
+        }
+        .joker-display-area h4 {
+            color: #faf089;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+        .active-joker-list { /* Renamed from joker-list for clarity */
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px; /* Slightly less gap for active jokers */
+            min-height: 60px;
+        }
+
+        /* Style for active jokers during game (renamed class) */
+        .active-joker-card {
+             background-color: rgba(26, 90, 57, 0.9);
+             width: 150px;
+             min-height: 120px;
+             border-radius: 8px;
+             padding: 15px;
+             text-align: left;
+             box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+             display: flex;
+             flex-direction: column;
+             justify-content: space-between;
+             border: 1px solid rgba(226, 232, 240, 0.1);
+        }
+         .active-joker-card h5 { /* Use h5 for title */
+             font-weight: bold;
+             margin-bottom: 5px;
+             color: #bee3f8;
+             font-size: 0.9em;
+         }
+        .active-joker-card p {
+            font-size: 0.8em;
+            color: #a0aec0;
+            flex-grow: 1;
+        }
+
+         /* Style for "Permanent" active jokers */
+         .active-joker-card.permanent {
+             background-color: rgba(44, 122, 123, 0.9);
+         }
+
+
+        .message {
+            margin-top: 25px;
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #f6e05e;
+            min-height: 1.6em;
+            transition: color 0.3s ease;
+            line-height: 1.4;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+         .message.temp {
+             color: #63b3ed;
+             text-shadow: none;
+         }
+
+
+        .bet-input-area {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .bet-input {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #4a5568;
+            background-color: #0B3C25;
+            color: #e2e8f0;
+            width: 90px;
+            text-align: center;
+            margin: 5px;
+            appearance: textfield; /* Firefox */
+             box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        .bet-input::-webkit-outer-spin-button,
+        .bet-input::-webkit-inner-spin-button {
+          -webkit-appearance: none; /* Safari and Chrome */
+          margin: 0;
+        }
+        .bet-input:disabled {
+             background-color: #14412C;
+             cursor: not-allowed;
+             opacity: 0.8;
+             box-shadow: none;
+        }
+
+        /* Headings and labels */
+        .player-area h3, .hand-display h2, .joker-display-area h4, .player-shop-area h4 {
+             color: #faf089;
+             text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* --- Initial Setup Styles --- */
+        .setup-area {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid rgba(246, 224, 94, 0.3);
+            border-radius: 10px;
+            background-color: rgba(20, 65, 44, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+         .setup-player-row {
+             display: flex;
+             align-items: center;
+             gap: 15px;
+             flex-wrap: wrap;
+             justify-content: center;
+         }
+         .setup-player-row label {
+             font-size: 1.1em;
+             font-weight: bold;
+             color: #bee3f8;
+         }
+         .setup-player-row select {
+             padding: 8px;
+             border-radius: 5px;
+             border: 1px solid #4a5568;
+             background-color: #0B3C25;
+             color: #e2e8f0;
+             font-size: 1em;
+             cursor: pointer;
+         }
+          .setup-player-row .fixed-type {
+             padding: 8px;
+             font-size: 1em;
+             color: #e2e8f0;
+          }
+
+         .setup-area button {
+             margin-top: 10px;
+         }
+
+         /* Hide game area initially */
+         #game-area-content {
+             display: none;
+         }
+
+         /* Utility classes */
+         .hidden {
+             display: none !important;
+         }
+
+
+         /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 15px;
+            }
+
+            .player-area {
+                padding: 15px;
+                min-width: 220px;
+            }
+
+            .balance-bet-area, .hand-display, .bet-input-area, .joker-display-area, .player-shop-area {
+                 margin-bottom: 15px;
+                 padding-bottom: 15px;
+                 padding-top: 15px;
+                 border-top: 1px solid rgba(74, 85, 104, 0.5);
+            }
+            .balance-bet-area { padding-top: 0; border-top: none;}
+
+
+            .player-area h3, .joker-display-area h4, .player-shop-area h4 {
+                 margin-bottom: 10px;
+            }
+            .hand-display h2 {
+                 margin-bottom: 10px;
+            }
+            .active-joker-card h5, .buyable-joker-card h5 {
+                 font-size: 0.9em;
+            }
+             .active-joker-card p, .buyable-joker-card p {
+                 font-size: 0.75em;
+             }
+
+
+            .cards {
+                gap: 8px;
+                min-height: 80px;
+                padding: 3px 0;
+            }
+            .card {
+                width: 55px;
+                height: 85px;
+                padding: 6px 10px;
+                font-size: 0.9em;
+            }
+             .card .rank { font-size: 1.1em; }
+             .card .suit { font-size: 0.9em; }
+
+            .active-joker-list, .player-available-jokers-list, .almanac-list {
+                 gap: 10px;
+                 min-height: 60px;
+            }
+            .active-joker-card {
+                 width: 110px;
+                 min-height: 90px;
+                 padding: 10px;
+            }
+            .buyable-joker-card, .almanac-card {
+                width: calc(50% - 15px);
+                min-width: 120px;
+                padding: 12px;
+            }
+
+
+            .btn {
+                padding: 10px 20px;
+                font-size: 1em;
+                 margin: 6px 10px;
+            }
+             .message {
+                 font-size: 1.1em;
+                 margin-top: 15px;
+             }
+
+             .setup-player-row {
+                 flex-direction: column;
+                 gap: 8px;
+             }
+             .setup-player-row label {
+                 margin-bottom: -5px;
+             }
+        }
+         @media (max-width: 480px) {
+             .cards .card {
+                width: 45px;
+                height: 70px;
+                padding: 5px 8px;
+                font-size: 0.8em;
+             }
+             .card .rank { font-size: 1em; }
+             .card .suit { font-size: 0.9em; }
+
+             .active-joker-card {
+                 width: 90px;
+                 min-height: 70px;
+                 padding: 8px;
+             }
+              .active-joker-card h5 { font-size: 0.8em; }
+             .active-joker-card p { font-size: 0.7em; }
+
+
+             .buyable-joker-card, .almanac-card {
+                 width: calc(100% - 10px);
+                 min-width: 100px;
+                 padding: 10px;
+             }
+              .active-joker-list, .player-available-jokers-list, .almanac-list {
+                  gap: 10px;
+              }
+
+
+              .btn {
+                 padding: 8px 15px;
+                 font-size: 0.9em;
+                 margin: 5px 8px;
+              }
+         }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-2xl font-bold mb-6" style="color: #faf089; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">Strategic Blackjack - Multiplayer</h1>
+
+        <!-- Initial Setup Area -->
+        <div id="setup-area" class="setup-area">
+             <h3 class="text-lg font-bold mb-3">Select Players</h3>
+             <div class="setup-player-row">
+                 <label>Player 1:</label>
+                 <span class="fixed-type">Human (Mandatory)</span>
+             </div>
+             <div class="setup-player-row">
+                 <label for="player-2-type">Player 2:</label>
+                 <select id="player-2-type" class="text-gray-800">
+                     <option value="AI" selected>Computer</option>
+                     <option value="Human">Human</option>
+                     <option value="None">None</option>
+                 </select>
+             </div>
+             <div class="setup-player-row">
+                 <label for="player-3-type">Player 3:</label>
+                 <select id="player-3-type" class="text-gray-800">
+                     <option value="AI" selected>Computer</option>
+                     <option value="Human">Human</option>
+                     <option value="None">None</option>
+                 </select>
+             </div>
+             <button id="start-game-setup-btn" class="btn btn-green">Start Game</button>
+        </div>
+
+        <!-- Main Game Area -->
+        <div id="game-area-content" class="game-area">
+
+             <!-- Optional: Central Joker Almanac (Read-only list of all possible jokers) -->
+            <div class="joker-almanac">
+                <h3 class="text-lg font-bold">Joker Almanac</h3>
+                <div id="joker-almanac-list" class="almanac-list">
+                     <!-- All possible jokers will be listed here descriptively -->
+                </div>
+            </div>
+
+               <!-- Dealer Area -->
+               <div class="hand-display mt-6">
+                <h2 class="text-xl mb-2">Dealer's Hand (<span id="dealer-value">?</span>)</h2>
+                <div id="dealer-cards" class="cards">
+                    <!-- Dealer cards will be rendered here -->
+                </div>
+           </div>
+
+
+            <!-- Player Areas -->
+            <div class="player-areas">
+                <!-- Player areas will be dynamically generated here -->
+                <!-- Each human player area will contain their bets, cards, active jokers, AND a dedicated "Shop" section -->
+            </div>
+
+            <!-- Controls Area -->
+            <div class="controls">
+                <button id="hit-btn" class="btn btn-primary hidden">Hit</button>
+                <button id="stand-btn" class="btn btn-secondary hidden">Stand</button>
+                <button id="start-round-btn" class="btn btn-green hidden">Start Round</button>
+                <button id="restart-game-btn" class="btn btn-secondary hidden">Restart Game</button>
+            </div>
+
+            <!-- Message Area -->
+            <div id="game-message" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- Card and Deck Representation ---
+
+        const suits = ['♥', '♦', '♣', '♠']; // Using symbols for suits
+        const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+        class Card {
+            constructor(rank, suit) {
+                this.rank = rank;
+                this.suit = suit;
+            }
+
+            getValue() {
+                if (this.rank === 'A') {
+                    return 11; // Default Ace value
+                } else if (['K', 'Q', 'J'].includes(this.rank)) {
+                    return 10;
+                } else {
+                    return parseInt(this.rank, 10);
+                }
+            }
+
+            toString() {
+                return `${this.rank}${this.suit}`;
+            }
+
+            render(isHidden = false) {
+                const cardDiv = document.createElement('div');
+                cardDiv.classList.add('card');
+                if (isHidden) {
+                    cardDiv.classList.add('hidden');
+                    cardDiv.innerHTML = '<span>?</span>';
+                } else {
+                    cardDiv.innerHTML = `
+                        <div class="rank">${this.rank}</div>
+                        <div class="suit">${this.suit}</div>
+                    `;
+                    const suitEl = cardDiv.querySelector('.suit');
+                     if (suitEl) {
+                         if (this.suit === '♥' || this.suit === '♦') {
+                            suitEl.style.color = '#e53e3e'; // Red
+                         } else {
+                            suitEl.style.color = '#1a202c'; // Black
+                         }
+                     }
+                }
+                return cardDiv;
+            }
+        }
+
+        class Deck {
+            constructor(numDecks = 1) { // Allow multiple decks if needed later
+                this.cards = [];
+                this.numDecks = numDecks;
+                this.reset();
+            }
+
+            reset() {
+                this.cards = [];
+                for (let d = 0; d < this.numDecks; d++) {
+                    for (const suit of suits) {
+                        for (const rank of ranks) {
+                            this.cards.push(new Card(rank, suit));
+                        }
+                    }
+                }
+                this.shuffle();
+            }
+
+            shuffle() {
+                for (let i = this.cards.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [this.cards[i], this.cards[j]] = [this.cards[j], this.cards[i]];
+                }
+            }
+
+            dealCard() {
+                if (this.cards.length === 0) {
+                    console.warn("Deck is empty! Creating and shuffling a new one.");
+                    this.reset();
+                }
+                return this.cards.pop();
+            }
+        }
+
+        // --- Hand Class ---
+        class Hand {
+            constructor() {
+                this.cards = [];
+            }
+
+            addCard(card) {
+                if (card instanceof Card) {
+                     this.cards.push(card);
+                } else {
+                    console.error("Attempted to add invalid item to hand:", card);
+                }
+            }
+
+            getValue() {
+                let value = 0;
+                let aceCount = 0;
+                for (const card of this.cards) {
+                    value += card.getValue();
+                    if (card.rank === 'A') {
+                        aceCount++;
+                    }
+                }
+
+                while (value > 21 && aceCount > 0) {
+                    value -= 10;
+                    aceCount--;
+                }
+                return value;
+            }
+
+            isBlackjack() {
+                return this.cards.length === 2 && this.getValue() === 21;
+            }
+
+            render(targetElementId, isDealer = false, hideFirstCard = false) {
+                const targetElement = document.getElementById(targetElementId);
+                if (!targetElement) {
+                    console.error(`Target element not found: ${targetElementId}`);
+                    return;
+                }
+                targetElement.innerHTML = '';
+
+                if (this.cards.length === 0) {
+                     return;
+                }
+
+                this.cards.forEach((card, index) => {
+                    const isHidden = isDealer && hideFirstCard && index === 0;
+                    targetElement.appendChild(card.render(isHidden));
+                });
+            }
+        }
+
+        // --- Joker System Implementation ---
+
+        class Joker {
+            constructor(name, description, effect, price = 0, isPermanent = false) {
+                this.name = name;
+                this.description = description;
+                this.effect = effect; // This should be a function or null
+                this.price = price;
+                this.isPermanent = isPermanent; // Flag for permanent jokers
+            }
+
+            // Renders the joker for the active (owned) list
+            renderActive() {
+                const jokerDiv = document.createElement('div');
+                jokerDiv.classList.add('active-joker-card'); // Renamed class
+                 if (this.isPermanent) {
+                     jokerDiv.classList.add('permanent');
+                 }
+                jokerDiv.innerHTML = `
+                    <h5>${this.name}</h5>
+                    <p>${this.description}</p>
+                `;
+                return jokerDiv;
+            }
+
+            // Renders the joker for the descriptive almanac list
+            renderAlmanac() {
+                 const jokerDiv = document.createElement('div');
+                 jokerDiv.classList.add('almanac-card'); // New class for almanac
+                 jokerDiv.innerHTML = `
+                     <h4>${this.name}</h4>
+                     <p>${this.description}</p>
+                      <p class="base-price mt-2">Base Price: $${this.price}</p>
+                 `;
+                 return jokerDiv;
+            }
+
+
+            // Renders the joker for a specific player's buyable shop list
+            renderBuyable(gameInstance, buyingPlayer) {
+                 const jokerDiv = document.createElement('div');
+                 jokerDiv.classList.add('buyable-joker-card'); // New class for buyable
+
+                 // Use the potentially adjusted price passed to this method (calculated by renderPlayerAvailableJokers)
+                 const currentPrice = this.price;
+
+                 jokerDiv.innerHTML = `
+                     <h5>${this.name}</h5>
+                     <p>${this.description}</p>
+                     <button class="buy-button" data-joker-name="${this.name}">Buy ($${currentPrice})</button>
+                 `;
+
+                 const buyButton = jokerDiv.querySelector('.buy-button');
+
+                 // Determine if the buyingPlayer already owns this joker
+                 const alreadyOwned = buyingPlayer && buyingPlayer.activeJokers.some(j => j.name === this.name);
+
+                 // Disable button conditions
+                 let disabled = false;
+                 let buttonText = `Buy ($${currentPrice})`;
+
+                 if (gameInstance.gameState !== 'SHOP_PHASE') {
+                    disabled = true;
+                 } else if (!buyingPlayer) { // Should not happen if called correctly
+                    disabled = true;
+                    buttonText = "Error";
+                 } else if (alreadyOwned) {
+                    disabled = true;
+                    buttonText = "Owned";
+                 } else if (buyingPlayer.balance < currentPrice) {
+                    disabled = true;
+                    buttonText = `Too Expensive ($${currentPrice})`;
+                 }
+
+                 buyButton.disabled = disabled;
+                 buyButton.textContent = buttonText;
+
+                 // IMPORTANT: The event listener for buying is added via delegation in renderPlayerAreas
+                 // The button element has the data-joker-name attribute for the delegate listener to use.
+
+                 return jokerDiv;
+            }
+        }
+
+         // --- Joker Deck (for populating shop) ---
+        class JokerDeckForShop {
+            constructor(allJokers) {
+                this.allJokers = [...allJokers]; // Keep original list
+                // No longer need a pool that depletes for round-by-round drawing
+            }
+
+            // Draws a fresh set of 'count' random jokers from the *entire* pool for the current round's shop.
+            // Ownership filtering and price adjustment are handled when rendering/buying.
+            drawShopJokers(count) {
+                 const numAvailable = this.allJokers.length;
+                 const numToDraw = Math.min(count, numAvailable);
+
+                 if (numToDraw === 0) {
+                     console.warn("No jokers available in the master list to draw for shop this round.");
+                     return [];
+                 }
+
+                 // Create a shuffled copy of the entire list
+                 const shuffledAll = [...this.allJokers];
+                 for (let i = shuffledAll.length - 1; i > 0; i--) {
+                     const j = Math.floor(Math.random() * (i + 1));
+                     [shuffledAll[i], shuffledAll[j]] = [shuffledAll[j], shuffledAll[i]];
+                 }
+
+                 // Take the first 'count' from the shuffled list
+                 const shopJokers = shuffledAll.slice(0, numToDraw);
+
+                 console.log(`Drew ${shopJokers.length} random jokers for the shop pool this round.`);
+                 return shopJokers; // Return base jokers, price adjustment happens in renderBuyable
+             }
+
+
+             // Calculates total price reduction percentage from owned permanent jokers for a SPECIFIC player
+             calculateJokerPriceReduction(player) {
+                 let totalReduction = 0;
+                 if (player && player.activeJokers) { // Added null/undefined checks
+                     player.activeJokers.forEach(joker => {
+                          if (joker.name === "The Negotiator") {
+                               totalReduction += 20;
+                          }
+                          // Add checks for other permanent jokers affecting price here if added later
+                     });
+                 }
+                 // Cap the reduction
+                 return Math.min(totalReduction, 80); // Example cap at 80%
+             }
+             // resetDeck is no longer needed for drawing jokers round-by-round with the new logic
+             // resetDeck() { ... }
+        }
+
+
+        // --- Define ALL Possible Jokers ---
+        const AllPossibleJokers = [
+             new Joker(
+                 "The Cheat",
+                 "Reveal the dealer's hidden card at the start of the round.",
+                 (game, player) => { console.log(`The Cheat active for ${player.name}. Dealer card will be revealed.`); },
+                 150
+             ),
+             new Joker(
+                 "Phantom Dealer",
+                 "If the dealer busts, win double your bet (stacks with Blackjack bonus).",
+                 null, // Effect checked in endRound logic
+                 200
+             ),
+             new Joker(
+                 "Double Aces",
+                 "Your Aces prefer to count as 11, even if it causes a bust initially (will adjust down only if needed).",
+                 null, // Effect is handled by standard Hand.getValue() logic
+                 110
+             ),
+             new Joker(
+                 "Dead Time",
+                 "If active when the dealer starts their turn, the dealer automatically stands (skips hitting).",
+                 (game, player) => { console.log(`Dead Time Joker active for ${player.name} skipping dealer turn.`); },
+                 120
+             ),
+              new Joker(
+                 "Lucky Seven",
+                 "If your hand total is exactly 7, 17, or 21 at the end of your turn (stand/bust/21), gain $20.",
+                  (game, player) => { console.log(`Lucky Seven Joker active for ${player.name}. Checking value...`); },
+                 105
+             ),
+             new Joker(
+                 "The Lucky Empty",
+                 "If you lose to the dealer with a final hand value of exactly 20, you lose nothing.",
+                 null, // Effect checked in endRound logic
+                 130
+             ),
+             new Joker(
+                 "The Negotiator",
+                 "Permanently reduces the price of Jokers in the shop by 20%. Stacks.",
+                 null, // Passive effect applied in JokerDeckForShop/renderBuyable
+                 300,
+                 true
+             ),
+        ];
+
+
+        // --- Game Class ---
+        class StrategicBlackjackGame {
+            constructor(playerTypes) {
+                this.initialPlayerTypes = playerTypes;
+                console.log(`Initializing game with player types: ${playerTypes.join(', ')}.`);
+
+                this.deck = new Deck();
+                // New JokerDeckForShop instance per game start (re-populates the full list)
+                this.jokerShopDeck = new JokerDeckForShop(AllPossibleJokers);
+                this.players = [];
+                const initialBalance = 100;
+
+                playerTypes.forEach((type, index) => {
+                     if (type !== 'None') {
+                         const playerName = `Player ${index + 1}`;
+                         this.players.push({
+                             id: `player-${index}`, // Use index 0, 1, or 2 for consistent element IDs
+                             name: playerName,
+                             isHuman: type === 'Human',
+                             hand: new Hand(),
+                             activeJokers: [],
+                             balance: initialBalance,
+                             isFrozen: false,
+                             currentBet: 0,
+                             hasStood: false,
+                             hasBusted: false,
+                             // DOM element references will be added after rendering
+                             areaEl: null,
+                             balanceEl: null,
+                             betAmountInput: null,
+                             currentBetEl: null,
+                             jokerListEl: null,
+                             handEl: null,
+                             valueEl: null,
+                             shopAreaEl: null, // New reference for player's shop section
+                             availableJokersListEl: null // New reference for player's buy list
+                         });
+                     }
+                });
+
+                // Check if at least one human player was selected (Player 1 must be human enforced by UI)
+                if (!this.players.some(p => p.isHuman)) {
+                     // This case should be impossible with current setup logic, but defensive check
+                    console.error("Game requires at least one human player.");
+                     alert("Error: Game must include at least one human player.");
+                     throw new Error("No human player selected.");
+                }
+
+                this.dealer = {
+                    hand: new Hand(),
+                    isDealer: true,
+                    revealHand: false,
+                    isFrozen: false,
+                    activeJokers: []
+                };
+                this.gameState = 'NOT_STARTED';
+                this.currentPlayerIndex = 0; // Index within the `this.players` array
+                // This list is reset *each round* in enterShopPhase
+                this.availableJokersForPurchase = [];
+                this.roundMessageLog = [];
+                this.messageTimeout = null;
+                this.tempMessageTimeout = null;
+
+
+                this.setupAreaEl = document.getElementById('setup-area');
+                this.gameAreaContentEl = document.getElementById('game-area-content');
+                this.playerAreasContainer = document.querySelector('.player-areas');
+                this.dealerHandEl = document.getElementById('dealer-cards');
+                this.dealerValueEl = document.getElementById('dealer-value');
+                this.hitBtn = document.getElementById('hit-btn');
+                this.standBtn = document.getElementById('stand-btn');
+                this.startRoundBtn = document.getElementById('start-round-btn');
+                this.restartGameBtn = document.getElementById('restart-game-btn');
+                this.gameMessageEl = document.getElementById('game-message');
+                this.jokerAlmanacListEl = document.getElementById('joker-almanac-list');
+
+                this.renderJokerAlmanac(); // Render the descriptive list once
+
+                // Event listeners for game control buttons (hit, stand, start, restart)
+                this.addEventListeners();
+
+                // Render player areas now that the player list is finalized
+                this.renderPlayerAreas();
+
+                // Initial state is set by the enterShopPhase call after constructor
+            }
+
+             addEventListeners() {
+                 this.hitBtn.addEventListener('click', () => this.handlePlayerHit());
+                 this.standBtn.addEventListener('click', () => this.handlePlayerStand());
+                 this.startRoundBtn.addEventListener('click', () => this.handleStartRoundClick());
+                 this.restartGameBtn.addEventListener('click', () => this.restartGame());
+
+                 // Event delegation for buying jokers is now set up *inside* renderPlayerAreas
+                 // on each human player's specific player.availableJokersListEl
+             }
+
+            // --- UI Rendering ---
+
+            renderJokerAlmanac() {
+                if (this.jokerAlmanacListEl) {
+                    this.jokerAlmanacListEl.innerHTML = '';
+                    AllPossibleJokers.forEach(joker => {
+                        this.jokerAlmanacListEl.appendChild(joker.renderAlmanac());
+                    });
+                }
+            }
+
+            renderPlayerAreas() {
+                this.playerAreasContainer.innerHTML = '';
+                this.players.forEach(player => { // Iterate through the active players
+                    const playerArea = document.createElement('div');
+                    playerArea.classList.add('player-area');
+                    playerArea.id = `player-area-${player.id}`; // Use original index for ID
+
+                     let playerShopHTML = '';
+                    if (player.isHuman) {
+                         playerShopHTML = `
+                             <div class="player-shop-area hidden">
+                                 <h4>Shop Available</h4>
+                                 <div id="player-available-jokers-list-${player.id}" class="player-available-jokers-list">
+                                     <!-- Buyable Jokers Rendered Here -->
+                                 </div>
+                             </div>
+                         `;
+                    }
+
+                    playerArea.innerHTML = `
+                        <h3 class="text-xl font-bold mb-3">${player.name}${player.isHuman ? '' : ' (AI)'}</h3>
+                        <div class="balance-bet-area">
+                            <div class="mb-3">Balance: $<span id="player-balance-${player.id}">${player.balance.toFixed(2)}</span></div>
+                            <div class="bet-input-area">
+                                <label for="bet-amount-${player.id}" class="mr-2 text-sm">Bet:</label>
+                                <input type="number" id="bet-amount-${player.id}" class="bet-input" value="10" min="0" step="1" ${player.isHuman ? '' : 'disabled'}>
+                            </div>
+                            <div>Current Bet: $<span id="current-bet-${player.id}">${player.currentBet}</span></div>
+                        </div>
+
+                        ${playerShopHTML} <!-- Insert player-specific shop area -->
+
+                        <div class="joker-display-area">
+                             <h4 class="text-md font-bold mb-2">Active Jokers</h4>
+                             <div id="player-joker-list-${player.id}" class="active-joker-list">
+                                 <!-- Player Active Jokers Rendered Here -->
+                             </div>
+                        </div>
+                        <div class="hand-display">
+                            <h4 class="text-md mb-2">Hand (<span id="player-value-${player.id}">0</span>)</h4>
+                            <div id="player-cards-${player.id}" class="cards">
+                                 <!-- Player Cards Rendered Here -->
+                            </div>
+                        </div>
+                    `;
+                    this.playerAreasContainer.appendChild(playerArea);
+
+                    // Store references (must be done *after* appending to DOM)
+                    player.areaEl = playerArea;
+                    player.balanceEl = document.getElementById(`player-balance-${player.id}`);
+                    player.betAmountInput = document.getElementById(`bet-amount-${player.id}`);
+                    player.currentBetEl = document.getElementById(`current-bet-${player.id}`);
+                    player.jokerListEl = document.getElementById(`player-joker-list-${player.id}`);
+                    player.handEl = document.getElementById(`player-cards-${player.id}`);
+                    player.valueEl = document.getElementById(`player-value-${player.id}`);
+
+                     if (player.isHuman) {
+                         player.shopAreaEl = document.getElementById(`player-area-${player.id}`).querySelector('.player-shop-area');
+                         player.availableJokersListEl = document.getElementById(`player-available-jokers-list-${player.id}`);
+
+                          // Add event delegation listener here *for this specific player's shop list*
+                          // This ensures each human player can buy from their own shop area
+                           player.availableJokersListEl.addEventListener('click', (event) => {
+                                const buyButton = event.target.closest('.buy-button');
+                                if (buyButton && !buyButton.disabled) {
+                                    const jokerName = buyButton.dataset.jokerName;
+                                     // Find the joker object from the global available list using the name
+                                    const jokerToBuyInShop = this.availableJokersForPurchase.find(joker => joker.name === jokerName);
+                                    if (jokerToBuyInShop) {
+                                        // The `player` object in this scope is the correct human player for this listener
+                                        this.buyJoker(player, jokerToBuyInShop);
+                                    } else {
+                                        console.error(`Clicked buy on a joker (${jokerName}) not found in the available shop list.`);
+                                    }
+                                }
+                           });
+                     }
+
+                     // Add input validation for human bet amount (logic remains the same)
+                     if (player.isHuman && player.betAmountInput) {
+                         player.betAmountInput.addEventListener('input', (e) => {
+                             let value = parseInt(e.target.value, 10);
+                             const maxBet = Math.floor(player.balance);
+
+                             if (isNaN(value) || value < 0) { value = 0; }
+                              if (value > maxBet) { value = maxBet; }
+                             if (e.target.value !== String(value)) { e.target.value = value; }
+
+                              e.target.max = maxBet;
+                              if (maxBet <= 0 || this.gameState !== 'SHOP_PHASE') {
+                                  e.target.disabled = true;
+                                  if (maxBet <= 0) e.target.value = 0;
+                              } else {
+                                   e.target.disabled = false;
+                              }
+                         });
+                          const maxBet = Math.floor(player.balance);
+                           player.betAmountInput.max = maxBet;
+                           if (maxBet <= 0) {
+                               player.betAmountInput.value = 0;
+                               player.betAmountInput.disabled = true;
+                           } else {
+                                player.betAmountInput.disabled = this.gameState !== 'SHOP_PHASE';
+                           }
+                     } else if (player.betAmountInput) {
+                          player.betAmountInput.disabled = true;
+                          player.betAmountInput.value = 0;
+                     }
+                }); // End players.forEach
+            }
+
+            renderHands(revealDealerOverride = false) {
+                const hideFirst = this.gameState !== 'ROUND_OVER' && !this.dealer.revealHand && !revealDealerOverride;
+                this.dealer.hand.render('dealer-cards', true, hideFirst);
+
+                this.players.forEach(player => {
+                    player.hand.render(`player-cards-${player.id}`); // Use player.id for element lookup
+                });
+            }
+
+             updateBalanceDisplay(player = null) { // Accept player object or null
+                 const updatePlayer = (p) => {
+                     if (p.balanceEl) {
+                         p.balanceEl.textContent = p.balance.toFixed(2);
+                         if (p.isHuman && p.betAmountInput) {
+                             const maxBet = Math.floor(p.balance);
+                             p.betAmountInput.max = maxBet;
+                              if (maxBet <= 0 || this.gameState !== 'SHOP_PHASE') {
+                                  p.betAmountInput.disabled = true;
+                                   if (maxBet <= 0) p.betAmountInput.value = 0;
+                              } else {
+                                   p.betAmountInput.disabled = false;
+                                  if (parseInt(p.betAmountInput.value) > maxBet) {
+                                      p.betAmountInput.value = maxBet;
+                                  }
+                                   if (parseInt(p.betAmountInput.value) < 0) {
+                                       p.betAmountInput.value = 0;
+                                   }
+                              }
+                         }
+                     }
+                 };
+
+                 if (player !== null) {
+                     updatePlayer(player);
+                 } else {
+                     this.players.forEach(updatePlayer);
+                 }
+                 // After updating balance, re-render shop for all human players to update button states
+                 if(this.gameState === 'SHOP_PHASE') {
+                    this.renderAvailableShopJokersForAllHumans(); // Rerender per-player shops
+                 }
+             }
+
+
+             updateBetDisplay(player = null) { // Accept player object or null
+                 const updatePlayer = (p) => {
+                     if (p.currentBetEl) {
+                          p.currentBetEl.textContent = p.currentBet;
+                     }
+                 };
+                 if (player !== null) {
+                    updatePlayer(player);
+                 } else {
+                    this.players.forEach(updatePlayer);
+                 }
+            }
+
+            updateScoresDisplay() {
+                 const hideFirst = this.gameState !== 'ROUND_OVER' && !this.dealer.revealHand;
+                 this.dealerValueEl.textContent = hideFirst ? '?' : this.dealer.hand.getValue();
+
+                 this.players.forEach(player => {
+                     if (player.valueEl) {
+                          if (player.hasBusted) {
+                               player.valueEl.textContent = `Bust (${player.hand.getValue()})`;
+                          } else if (player.currentBet <= 0) {
+                               player.valueEl.textContent = `--`;
+                          }
+                           else {
+                               player.valueEl.textContent = player.hand.getValue();
+                          }
+                     }
+                 });
+            }
+
+            // Renders active jokers for all players
+            renderCurrentJokers() {
+                 this.players.forEach(player => {
+                      if (player.jokerListEl) {
+                           player.jokerListEl.innerHTML = '';
+                           if (player.activeJokers.length === 0) {
+                                player.jokerListEl.innerHTML = '<p class="text-gray-400 text-sm italic">None</p>';
+                           } else {
+                                player.activeJokers.forEach(joker => {
+                                    player.jokerListEl.appendChild(joker.renderActive());
+                                });
+                           }
+                      } else {
+                           console.warn(`Joker list element not found for ${player.name}`);
+                      }
+                 });
+            }
+
+            // Populates the *individual* shop area for a given player
+            // Takes the global available list (this.availableJokersForPurchase) and renders it for this player
+            renderPlayerAvailableJokers(player, shopJokers) {
+                 if (!player.isHuman || !player.availableJokersListEl) return;
+
+                 player.availableJokersListEl.innerHTML = ''; // Clear previous
+
+                 if (!shopJokers || shopJokers.length === 0) {
+                     player.availableJokersListEl.innerHTML = '<p class="text-gray-400 italic">No new jokers available.</p>';
+                     return;
+                 }
+
+                 // Get the price reduction specific to this player
+                 const priceReductionPercentage = this.jokerShopDeck.calculateJokerPriceReduction(player);
+
+                 let buyableJokersRendered = 0; // Count how many cards are actually displayed (buyable or owned placeholder)
+
+                 shopJokers.forEach(joker => {
+                     // Check if THIS player already owns THIS joker
+                     const alreadyOwned = player.activeJokers.some(owned => owned.name === joker.name);
+
+                      // We will render the card if it's NOT owned OR if we want to show owned ones in the shop view.
+                      // Let's show owned ones to indicate why they can't buy it.
+                      // If you only want to show *buyable* ones: `if (!alreadyOwned) { ... }`
+                      // If you want to show all drawn jokers: process all
+
+                     // Let's show all drawn jokers in the shop view, marking owned ones.
+                      // Calculate the price adjusted for THIS player's discounts if not owned
+                      let adjustedPrice = joker.price;
+                      if (!alreadyOwned && priceReductionPercentage > 0) {
+                           adjustedPrice = Math.max(1, Math.round(joker.price * (1 - priceReductionPercentage / 100)));
+                      }
+
+                      // Create a temporary joker object for rendering with the adjusted price (used even if owned for display)
+                      const jokerForRendering = new Joker(joker.name, joker.description, joker.effect, adjustedPrice, joker.isPermanent);
+
+                      // Render the card - it will have the buy button logic inside renderBuyable
+                      // renderBuyable already handles disabling if owned or too expensive
+                      player.availableJokersListEl.appendChild(jokerForRendering.renderBuyable(this, player));
+                      buyableJokersRendered++; // Count that we added a card to the list
+
+
+                 });
+                  // If after rendering, no jokers were displayed (e.g., the shopDraw was 0)
+                  if (buyableJokersRendered === 0 && (shopJokers && shopJokers.length > 0)) {
+                       // This case means drawn jokers exist, but maybe there's a logic error.
+                       // Or it means the shopDraw was empty. Let's just check shopJokers array.
+                        player.availableJokersListEl.innerHTML = '<p class="text-gray-400 italic">No new jokers available.</p>';
+                   } else if (!shopJokers || shopJokers.length === 0) {
+                        player.availableJokersListEl.innerHTML = '<p class="text-gray-400 italic">No new jokers available.</p>';
+                   }
+
+
+            }
+
+             // Renders the available shop jokers for ALL human players
+             renderAvailableShopJokersForAllHumans() {
+                 this.players.forEach(player => {
+                      if (player.isHuman) {
+                           // Pass the GLOBAL available list to each player's rendering function
+                           this.renderPlayerAvailableJokers(player, this.availableJokersForPurchase);
+                      }
+                 });
+             }
+
+
+            // --- Message Handling ---
+             setMessage(message, duration = 0, isTemporary = false) {
+                 console.log("Message:", message);
+
+                 if (this.tempMessageTimeout) {
+                     clearTimeout(this.tempMessageTimeout);
+                     this.tempMessageTimeout = null;
+                 }
+
+                 if (isTemporary) {
+                     const persistentMessage = this.roundMessageLog.length > 0 ? this.roundMessageLog[this.roundMessageLog.length - 1] : "";
+                     this.gameMessageEl.textContent = message;
+                     this.gameMessageEl.classList.add('temp');
+                     this.tempMessageTimeout = setTimeout(() => {
+                         this.gameMessageEl.textContent = persistentMessage;
+                         this.gameMessageEl.classList.remove('temp');
+                         this.tempMessageTimeout = null;
+                     }, duration);
+
+                 } else {
+                      if (this.tempMessageTimeout) {
+                          clearTimeout(this.tempMessageTimeout);
+                          this.tempMessageTimeout = null;
+                          this.gameMessageEl.classList.remove('temp');
+                      }
+                      if (this.roundMessageLog.length === 0 || this.roundMessageLog[this.roundMessageLog.length-1] !== message) {
+                         this.roundMessageLog.push(message);
+                      }
+                      this.gameMessageEl.textContent = message;
+                      this.gameMessageEl.classList.remove('temp');
+                 }
+             }
+
+
+            updateControlButtons() {
+                this.hitBtn.classList.add('hidden');
+                this.standBtn.classList.add('hidden');
+                this.startRoundBtn.classList.add('hidden');
+                this.restartGameBtn.classList.add('hidden');
+
+                this.players.forEach(player => {
+                     if (player.betAmountInput) {
+                          const maxBet = Math.floor(player.balance);
+                          if (player.isHuman) {
+                              if (maxBet <= 0 || this.gameState !== 'SHOP_PHASE') {
+                                  player.betAmountInput.disabled = true;
+                                  if (maxBet <= 0) player.betAmountInput.value = 0;
+                              } else {
+                                   player.betAmountInput.disabled = false;
+                              }
+                          } else {
+                              player.betAmountInput.disabled = true;
+                          }
+                     }
+                     // Hide/Show player shop areas based on game state and if they are human
+                     if (player.isHuman && player.shopAreaEl) {
+                          if (this.gameState !== 'SHOP_PHASE') {
+                              player.shopAreaEl.classList.add('hidden');
+                          } else {
+                              player.shopAreaEl.classList.remove('hidden');
+                          }
+                     }
+                });
+
+
+                if (this.gameState === 'SHOP_PHASE') {
+                    this.startRoundBtn.classList.remove('hidden');
+                    this.restartGameBtn.classList.remove('hidden');
+                    this.startRoundBtn.textContent = "Place Bets & Start";
+                    this.startRoundBtn.disabled = false;
+                } else if (this.gameState === 'PLAYER_TURN') {
+                     const currentPlayer = this.players[this.currentPlayerIndex];
+                     if (currentPlayer.isHuman && !currentPlayer.hasStood && !currentPlayer.hasBusted && currentPlayer.currentBet > 0) {
+                         this.hitBtn.classList.remove('hidden');
+                         this.standBtn.classList.remove('hidden');
+                     }
+                     this.restartGameBtn.classList.remove('hidden');
+                } else if (this.gameState === 'DEALER_TURN') {
+                      this.restartGameBtn.classList.remove('hidden');
+                } else if (this.gameState === 'ROUND_OVER') {
+                     this.restartGameBtn.classList.remove('hidden');
+                }
+            }
+
+             getCurrentHumanPlayer() {
+                 // Returns the first human player (Player 1)
+                 return this.players.find(p => p.isHuman);
+             }
+
+            // --- Game State Management ---
+
+            restartGame() {
+                 console.log("Restarting game...");
+                 this.gameState = 'NOT_STARTED';
+
+                 this.players = [];
+                 const initialBalance = 100;
+                 this.initialPlayerTypes.forEach((type, index) => {
+                      if (type !== 'None') {
+                          const playerName = `Player ${index + 1}`;
+                          this.players.push({
+                              id: `player-${index}`,
+                              name: playerName,
+                              isHuman: type === 'Human',
+                              hand: new Hand(),
+                              activeJokers: [],
+                              balance: initialBalance,
+                              isFrozen: false,
+                              currentBet: 0,
+                              hasStood: false,
+                              hasBusted: false,
+                              areaEl: null, balanceEl: null, betAmountInput: null, currentBetEl: null,
+                              jokerListEl: null, handEl: null, valueEl: null,
+                              shopAreaEl: null, availableJokersListEl: null
+                          });
+                      }
+                 });
+
+                 this.deck = new Deck();
+                 // Create a NEW JokerDeckForShop instance which resets the draw pool
+                 this.jokerShopDeck = new JokerDeckForShop(AllPossibleJokers);
+                 this.dealer.hand = new Hand();
+                 this.dealer.revealHand = false;
+                 this.dealer.isFrozen = false;
+                 this.availableJokersForPurchase = [];
+                 this.roundMessageLog = [];
+                 this.currentPlayerIndex = 0;
+
+                 if (this.tempMessageTimeout) {
+                     clearTimeout(this.tempMessageTimeout);
+                     this.tempMessageTimeout = null;
+                     this.gameMessageEl.classList.remove('temp');
+                 }
+                 this.gameMessageEl.textContent = "";
+
+                 this.renderPlayerAreas(); // Re-creates DOM elements and attaches references
+                 this.updateBalanceDisplay();
+                 this.updateBetDisplay();
+                 this.renderHands();
+                 this.updateScoresDisplay();
+                 this.renderCurrentJokers();
+
+                 this.setMessage("Game Restarted. Entering shop phase for the new game...");
+                 this.updateControlButtons();
+
+                 setTimeout(() => this.enterShopPhase(), 1500);
+            }
+
+             handleStartRoundClick() {
+                 if (this.startRoundBtn.disabled) return;
+                 this.startRoundBtn.disabled = true;
+
+                 if (this.gameState === 'SHOP_PHASE') {
+                     this.startPlayingPhase();
+                 }
+             }
+
+            enterShopPhase() {
+                console.log("Entering Shop Phase...");
+                this.gameState = 'SHOP_PHASE';
+                // Don't clear the log aggressively, keep previous round results visible initially
+                // this.roundMessageLog = [];
+                 if (this.tempMessageTimeout) {
+                     clearTimeout(this.tempMessageTimeout);
+                     this.tempMessageTimeout = null;
+                     this.gameMessageEl.classList.remove('temp');
+                 }
+
+                 this.deck = new Deck(); // New deck for the round
+                 this.dealer.hand = new Hand();
+                 this.dealer.revealHand = false;
+                 this.dealer.isFrozen = false;
+
+                 this.players.forEach(player => {
+                     player.hand = new Hand(); // Clear hand for the new round
+                     player.currentBet = 0; // Clear display bet
+                     player.hasStood = false;
+                     player.hasBusted = false;
+                     player.isFrozen = false;
+                     // Reset bet input for human players
+                     if (player.isHuman && player.betAmountInput) {
+                          const maxBet = Math.floor(player.balance);
+                         player.betAmountInput.max = maxBet;
+                         player.betAmountInput.value = Math.min(10, maxBet > 0 ? maxBet : 0);
+                         player.betAmountInput.disabled = maxBet <= 0;
+                     } else if (!player.isHuman && player.betAmountInput) {
+                          player.betAmountInput.disabled = true;
+                          player.betAmountInput.value = 0;
+                     }
+                     this.updateBetDisplay(player); // Update bet display to show 0
+                 });
+                 this.currentPlayerIndex = 0;
+
+                 // Draw NEW jokers for the round's shop pool from the full list
+                 this.availableJokersForPurchase = this.jokerShopDeck.drawShopJokers(3);
+
+
+                 this.updateBalanceDisplay(); // Update balances and enable/disable human bet inputs
+                 this.renderHands(); // Clear hands visually
+                 this.updateScoresDisplay(); // Reset scores visually (will show -- for players not in round)
+                 this.renderCurrentJokers(); // Re-render active jokers (should be same as before shop phase)
+
+                 // Render shop items for *each* human player, applying their specific reductions
+                 this.renderAvailableShopJokersForAllHumans();
+
+                 this.setMessage("Shop Phase: Place your bet and buy Jokers.");
+                 this.updateControlButtons();
+            }
+
+             startPlayingPhase() {
+                 if (this.gameState !== 'SHOP_PHASE') return;
+                 console.log("Starting Playing Phase...");
+
+                 let allBetsValid = true;
+                 let anyPlayerInRound = false;
+
+                 this.players.forEach(player => {
+                      let betAmount = 0;
+                      const currentBalance = player.balance;
+
+                      if (player.isHuman) {
+                           const inputBet = parseInt(player.betAmountInput.value, 10);
+                            if (isNaN(inputBet) || inputBet < 0 || inputBet > Math.floor(currentBalance)) {
+                                console.error(`Validation error for human bet: ${inputBet} for ${player.name}`);
+                                this.setMessage(`${player.name}: Invalid bet amount ($${inputBet}). Please correct.`, 3000, true);
+                                allBetsValid = false;
+                           } else {
+                              betAmount = inputBet;
+                           }
+                      } else {
+                            if (currentBalance <= 0) {
+                                betAmount = 0;
+                            } else {
+                                const baseBet = 10;
+                                if (currentBalance >= baseBet) {
+                                     betAmount = baseBet;
+                                } else if (currentBalance > 0) {
+                                    betAmount = Math.max(1, Math.floor(currentBalance * 0.1));
+                                } else {
+                                     betAmount = 0;
+                                }
+                                betAmount = Math.min(betAmount, Math.floor(currentBalance));
+                                console.log(`${player.name} betting $${betAmount}`);
+                            }
+                      }
+
+                       if (allBetsValid && betAmount >= 0) {
+                           player.currentBet = betAmount;
+                           if (betAmount > 0) {
+                                player.balance -= player.currentBet;
+                                anyPlayerInRound = true;
+                           }
+                           this.updateBetDisplay(player);
+                       } else {
+                           player.currentBet = 0;
+                           this.updateBetDisplay(player);
+                       }
+                 });
+
+                 if (!allBetsValid) {
+                     this.startRoundBtn.disabled = false;
+                     this.updateBalanceDisplay();
+                     return;
+                 }
+
+                 if (!anyPlayerInRound) {
+                      this.setMessage("No active players with bets placed. Round skipped.", 0);
+                      this.gameState = 'ROUND_OVER';
+                      this.updateControlButtons();
+                       this.players.forEach(player => player.hand = new Hand());
+                       this.dealer.hand = new Hand();
+                       this.renderHands();
+                       this.updateScoresDisplay();
+                      return;
+                 }
+
+                 this.updateBalanceDisplay();
+                 this.setMessage("Dealing cards...", 1000, true);
+
+                 this.deck.reset();
+                 this.dealer.hand = new Hand();
+                 this.players.forEach(player => player.hand = new Hand());
+                 const playersInRound = this.players.filter(p => p.currentBet > 0);
+
+                 if (playersInRound.length > 0) {
+                     for (let i = 0; i < 2; i++) {
+                         playersInRound.forEach(player => {
+                             player.hand.addCard(this.deck.dealCard());
+                         });
+                         this.dealer.hand.addCard(this.deck.dealCard());
+                     }
+                 } else {
+                     console.warn("No players in round after bet processing, dealing skipped.");
+                 }
+
+                 this.renderHands();
+                 this.updateScoresDisplay();
+
+                 let cheatActivated = false;
+                 playersInRound.forEach(player => {
+                      if (this.hasActiveJoker(player, "The Cheat")) {
+                          this.triggerJokerEffect(player, "The Cheat", 'onRoundStart');
+                          cheatActivated = true;
+                      }
+                 });
+                 if (cheatActivated) {
+                        this.dealer.revealHand = true;
+                        this.renderHands(true);
+                        this.updateScoresDisplay();
+                 }
+
+                 this.gameState = 'PLAYER_TURN';
+                 this.updateControlButtons();
+
+                 this.checkForInitialBlackjacksAndStartTurns();
+            }
+
+
+            checkForInitialBlackjacksAndStartTurns() {
+                 console.log("Checking for initial Blackjacks and starting turns...");
+                 let dealerHasBlackjack = this.dealer.hand.isBlackjack();
+                 let anyPlayerInRoundHasBlackjack = false;
+
+                 const playersInRound = this.players.filter(p => p.currentBet > 0);
+
+                 playersInRound.forEach(player => {
+                     if (player.hand.isBlackjack()) {
+                         this.setMessage(`${player.name} has Blackjack!`, 2000, true);
+                         player.hasStood = true;
+                         anyPlayerInRoundHasBlackjack = true;
+                         console.log(`${player.name} got Blackjack.`);
+                     }
+                 });
+
+                 let playersWhoNeedToPlay = playersInRound.filter(p => !p.hasStood && !p.hasBusted);
+                 let activePlayersStillNeedTurn = playersWhoNeedToPlay.length > 0;
+
+                 console.log(`Dealer BJ: ${dealerHasBlackjack}, Any Player In Round BJ: ${anyPlayerInRoundHasBlackjack}, Players needing turn: ${playersWhoNeedToPlay.map(p=>p.name).join(', ') || 'None'}`);
+
+
+                 if (dealerHasBlackjack) {
+                     this.setMessage("Dealer has Blackjack!", 2000);
+                     this.dealer.revealHand = true;
+                     this.renderHands(true);
+                     this.updateScoresDisplay();
+                     setTimeout(() => this.endRound(), 2500);
+                 } else if (!activePlayersStillNeedTurn) {
+                      console.log("Dealer no BJ, and all betting players are finished. Proceeding to dealer turn.");
+                       if(!anyPlayerInRoundHasBlackjack) {
+                           this.setMessage("Starting dealer turn.", 1500, true);
+                       }
+                      setTimeout(() => this.startDealerTurn(), 1500);
+                 } else {
+                      console.log("Dealer no BJ, and some players need to play. Starting player turns.");
+                      const firstPlayerInRoundNeedingTurn = playersWhoNeedToPlay[0];
+                      const firstPlayerIndexInPlayersArray = this.players.indexOf(firstPlayerInRoundNeedingTurn);
+
+                      this.currentPlayerIndex = firstPlayerIndexInPlayersArray;
+                      this.setMessage(`${this.players[this.currentPlayerIndex].name}'s turn.`);
+                      this.updateControlButtons();
+
+                      if (!this.players[this.currentPlayerIndex].isHuman) {
+                          setTimeout(() => this.computerTurn(), 1200);
+                      }
+                 }
+            }
+
+            buyJoker(player, jokerToBuyInShop) {
+                 if (this.gameState !== 'SHOP_PHASE' || !player || !player.isHuman) return;
+
+                 // Calculate the price based on the buying player's discounts *now*
+                 const priceReductionPercentage = this.jokerShopDeck.calculateJokerPriceReduction(player);
+                 let purchasePrice = jokerToBuyInShop.price;
+                 if (priceReductionPercentage > 0) {
+                     purchasePrice = Math.max(1, Math.round(jokerToBuyInShop.price * (1 - priceReductionPercentage / 100)));
+                 }
+
+
+                 if (!jokerToBuyInShop) {
+                     console.error(`Joker object not passed correctly to buyJoker.`);
+                     this.renderAvailableShopJokersForAllHumans();
+                     return;
+                 }
+                 if (player.balance < purchasePrice) {
+                     this.setMessage(`${player.name} cannot afford "${jokerToBuyInShop.name}".`, 2000, true);
+                     this.renderAvailableShopJokersForAllHumans(); // Update states for all human players
+                     return;
+                 }
+                 if (player.activeJokers.some(j => j.name === jokerToBuyInShop.name)) {
+                     this.setMessage(`${player.name} already has "${jokerToBuyInShop.name}".`, 2000, true);
+                     this.renderAvailableShopJokersForAllHumans(); // Update states for all human players
+                     return;
+                 }
+
+                 player.balance -= purchasePrice;
+                 const originalJoker = AllPossibleJokers.find(j => j.name === jokerToBuyInShop.name);
+                 if (originalJoker) {
+                     player.activeJokers.push(originalJoker);
+                      console.log(`${player.name} bought: ${originalJoker.name} for $${purchasePrice}. Balance: $${player.balance.toFixed(2)}`);
+                 } else {
+                     console.error(`Original Joker object not found for ${jokerToBuyInShop.name}! Cannot add to player's permanent list.`);
+                     player.balance += purchasePrice;
+                      this.setMessage("Error buying Joker. Please try again.", 3000, true);
+                     this.updateBalanceDisplay(player);
+                     this.renderAvailableShopJokersForAllHumans();
+                     return;
+                 }
+
+                 // Remove from the global available list for *this round's* purchase list
+                 // The joker is bought from the round's limited selection, not the deck pool directly.
+                 this.availableJokersForPurchase = this.availableJokersForPurchase.filter(joker => joker.name !== jokerToBuyInShop.name);
+
+                 this.updateBalanceDisplay(player); // Update balance display immediately for the buyer
+                 this.renderCurrentJokers(); // Update active jokers display for *all* players (they might want to see others' jokers)
+                 this.renderAvailableShopJokersForAllHumans(); // Update shop lists for all human players
+                 this.setMessage(`${player.name} bought "${jokerToBuyInShop.name}"!`, 2000, true);
+            }
+
+
+            handlePlayerHit() {
+                if (this.gameState !== 'PLAYER_TURN') return;
+                const currentPlayer = this.players[this.currentPlayerIndex];
+                if (!currentPlayer.isHuman || currentPlayer.hasStood || currentPlayer.hasBusted || currentPlayer.currentBet <= 0) {
+                    return;
+                }
+
+                console.log(`${currentPlayer.name} hits.`);
+                this.setMessage(`${currentPlayer.name} hits...`, 1000, true);
+                currentPlayer.hand.addCard(this.deck.dealCard());
+                this.renderHands();
+                this.updateScoresDisplay();
+
+                const playerValue = currentPlayer.hand.getValue();
+
+                if (playerValue > 21) {
+                    currentPlayer.hasBusted = true;
+                     this.updateScoresDisplay();
+                    this.setMessage(`${currentPlayer.name} busts!`, 2000);
+                    setTimeout(() => this.moveToNextActivePlayer(), 1500);
+                } else if (playerValue === 21) {
+                     this.setMessage(`${currentPlayer.name} hits 21!`, 1500);
+                     currentPlayer.hasStood = true;
+                     setTimeout(() => this.moveToNextActivePlayer(), 1500);
+                } else {
+                     this.setMessage(`${currentPlayer.name}'s turn. Score: ${playerValue}`);
+                }
+            }
+
+            handlePlayerStand() {
+                if (this.gameState !== 'PLAYER_TURN') return;
+                 const currentPlayer = this.players[this.currentPlayerIndex];
+                 if (!currentPlayer.isHuman || currentPlayer.hasStood || currentPlayer.hasBusted || currentPlayer.currentBet <= 0) {
+                     return;
+                 }
+
+                currentPlayer.hasStood = true;
+                const playerValue = currentPlayer.hand.getValue();
+                this.setMessage(`${currentPlayer.name} stands with ${playerValue}.`, 1500);
+                setTimeout(() => this.moveToNextActivePlayer(), 1000);
+            }
+
+             moveToNextActivePlayer() {
+                 console.log("Attempting to move to next active player. Current index:", this.currentPlayerIndex);
+
+                 const currentPlayer = this.players[this.currentPlayerIndex];
+                 if (currentPlayer && currentPlayer.currentBet > 0 && (currentPlayer.hasBusted || currentPlayer.hasStood)) {
+                     console.log(`${currentPlayer.name} finished their turn. Triggering end-of-turn effects.`);
+                      this.triggerJokerEffect(currentPlayer, "Lucky Seven", 'onTurnEnd');
+                 }
+
+                 let nextIndex = -1;
+                 const startIndex = (this.currentPlayerIndex + 1) % this.players.length;
+
+                 for (let i = 0; i < this.players.length; i++) {
+                     const potentialNextIndex = (startIndex + i) % this.players.length;
+                     const player = this.players[potentialNextIndex];
+
+                     if (player.currentBet > 0 && !player.hasStood && !player.hasBusted) {
+                         nextIndex = potentialNextIndex;
+                         break;
+                     } else {
+                          console.log(`Skipping Player ${player.name} (InRound: ${player.currentBet > 0}, Stood: ${player.hasStood}, Busted: ${player.hasBusted})`);
+                     }
+                 }
+
+
+                 if (nextIndex !== -1) {
+                     this.currentPlayerIndex = nextIndex;
+                     const nextPlayer = this.players[this.currentPlayerIndex];
+                     console.log(`Next player is ${nextPlayer.name} (Index in array: ${this.currentPlayerIndex})`);
+                     this.setMessage(`${nextPlayer.name}'s turn.`);
+                     this.updateControlButtons();
+
+                     if (!nextPlayer.isHuman) {
+                         setTimeout(() => this.computerTurn(), 1200);
+                     }
+                 } else {
+                     console.log("All betting players finished their turns. Moving to dealer's turn.");
+                     setTimeout(() => this.startDealerTurn(), 500);
+                 }
+             }
+
+            computerTurn() {
+                if (this.gameState !== 'PLAYER_TURN') return;
+                const currentPlayer = this.players[this.currentPlayerIndex];
+                if (currentPlayer.isHuman || currentPlayer.hasStood || currentPlayer.hasBusted || currentPlayer.currentBet <= 0) {
+                     console.log("Computer turn logic aborted: Not AI, finished, or no bet:", currentPlayer.name);
+                     this.moveToNextActivePlayer();
+                     return;
+                }
+
+                console.log(`Executing computer turn for ${currentPlayer.name}`);
+                const playerValue = currentPlayer.hand.getValue();
+                 const hitThreshold = 17;
+
+                 setTimeout(() => {
+                      if (this.gameState !== 'PLAYER_TURN' || this.players[this.currentPlayerIndex] !== currentPlayer) {
+                          console.log("State changed or not current player during AI delay for", currentPlayer.name, "Aborting AI turn logic.");
+                          return;
+                      }
+
+                     if (currentPlayer.hand.getValue() < hitThreshold) {
+                         console.log(`${currentPlayer.name} hits.`);
+                         this.setMessage(`${currentPlayer.name} hits.`, 1000, true);
+                         currentPlayer.hand.addCard(this.deck.dealCard());
+                         this.renderHands();
+                         this.updateScoresDisplay();
+
+                         const newValue = currentPlayer.hand.getValue();
+                         if (newValue > 21) {
+                             currentPlayer.hasBusted = true;
+                              this.updateScoresDisplay();
+                             this.setMessage(`${currentPlayer.name} busts!`, 1500);
+                             setTimeout(() => this.moveToNextActivePlayer(), 1500);
+                         } else if (newValue === 21) {
+                              this.setMessage(`${currentPlayer.name} hits 21!`, 1500);
+                              currentPlayer.hasStood = true;
+                              setTimeout(() => this.moveToNextActivePlayer(), 1500);
+                         } else {
+                             this.computerTurn();
+                         }
+                     } else {
+                         currentPlayer.hasStood = true;
+                         console.log(`${currentPlayer.name} stands with ${currentPlayer.hand.getValue()}.`);
+                         this.setMessage(`${currentPlayer.name} stands with ${currentPlayer.hand.getValue()}.`, 1500);
+                         setTimeout(() => this.moveToNextActivePlayer(), 1000);
+                     }
+                 }, 1000);
+            }
+
+
+            startDealerTurn() {
+                 console.log("Starting Dealer's turn.");
+                 const playersStillInRound = this.players.filter(p => p.currentBet > 0 && !p.hasBusted);
+
+                 if (playersStillInRound.length === 0) {
+                      console.log("No players left to compare against. Ending round early.");
+                      this.setMessage("No players left to play against the dealer. Round ends.", 2000);
+                      this.dealer.revealHand = true;
+                      this.renderHands(true);
+                      this.updateScoresDisplay();
+                      setTimeout(() => this.endRound(), 2000);
+                      return;
+                 }
+
+                 this.gameState = 'DEALER_TURN';
+                 this.updateControlButtons();
+                 this.setMessage("Dealer's turn.");
+
+                 let deadTimeActivated = false;
+                 const playersInRoundWhoDidNotBust = this.players.filter(p => p.currentBet > 0 && !p.hasBusted);
+                 for (const player of playersInRoundWhoDidNotBust) {
+                      if (this.hasActiveJoker(player, "Dead Time")) {
+                         deadTimeActivated = true;
+                         console.log(`Dead Time activated by ${player.name}! Dealer's turn skipped.`);
+                          this.triggerJokerEffect(player, "Dead Time", 'onDealerTurnStart');
+                          break;
+                     }
+                 }
+
+                 this.dealer.revealHand = true;
+                 this.renderHands();
+                 this.updateScoresDisplay();
+
+                 setTimeout(() => {
+                     if (deadTimeActivated) {
+                          this.endRound();
+                     } else {
+                          this.dealerTurnLogic();
+                     }
+                 }, 1000);
+            }
+
+             dealerTurnLogic() {
+                 if (this.gameState !== 'DEALER_TURN') return;
+
+                 const dealerValue = this.dealer.hand.getValue();
+                 console.log(`Dealer current value: ${dealerValue}`);
+
+                 if (dealerValue < 17) {
+                     console.log("Dealer hits.");
+                     this.setMessage("Dealer hits.", 1000, true);
+                     this.dealer.hand.addCard(this.deck.dealCard());
+                     this.renderHands();
+                     this.updateScoresDisplay();
+                     setTimeout(() => this.dealerTurnLogic(), 1200);
+                 } else {
+                     if (dealerValue > 21) {
+                          console.log("Dealer busts.");
+                          this.setMessage(`Dealer busts with ${dealerValue}!`, 2000);
+                     } else {
+                          console.log(`Dealer stands with ${dealerValue}.`, 1500);
+                          this.setMessage(`Dealer stands with ${dealerValue}.`, 1500);
+                     }
+                     setTimeout(() => this.endRound(), 1500);
+                 }
+             }
+
+
+             endRound() {
+                 console.log("Ending round...");
+                 this.gameState = 'ROUND_OVER';
+
+                 this.dealer.revealHand = true;
+                 this.renderHands(true);
+                 this.updateScoresDisplay();
+
+                 const dealerValue = this.dealer.hand.getValue();
+                 const dealerBusted = dealerValue > 21;
+                 const dealerBlackjack = this.dealer.hand.isBlackjack();
+
+                 let finalMessages = ["Round Over! Results:"];
+                 console.log(`Dealer final value: ${dealerValue} (Busted: ${dealerBusted}, BJ: ${dealerBlackjack})`);
+
+                 this.players.forEach(player => {
+                     const index = this.players.indexOf(player);
+
+                     if (player.currentBet <= 0) {
+                          if(player.isHuman) {
+                            finalMessages.push(`${player.name}: No bet placed.`);
+                          }
+                           player.currentBet = 0;
+                           this.updateBetDisplay(player);
+                          return;
+                     }
+
+                      let message = `${player.name}`;
+                      let payout = 0; // Profit
+                      const playerValue = player.hand.getValue();
+                      const playerBlackjack = player.hand.isBlackjack();
+                      const playerBet = player.currentBet;
+
+                      console.log(`--- ${player.name} (Bet: $${playerBet}) ---`);
+                      console.log(`Hand: ${player.hand.cards.map(c=>c.toString())} (${playerValue}) BJ: ${playerBlackjack} Busted: ${player.hasBusted}`);
+
+
+                      let outcome = '';
+
+                      if (player.hasBusted) { outcome = 'player_bust'; }
+                      else if (dealerBusted) { outcome = 'dealer_bust'; }
+                      else if (playerBlackjack && !dealerBlackjack) { outcome = 'player_bj'; }
+                      else if (!playerBlackjack && dealerBlackjack) { outcome = 'dealer_bj'; }
+                      else if (playerValue > dealerValue) { outcome = 'win'; }
+                      else if (playerValue < dealerValue) { outcome = 'lose'; }
+                      else { outcome = 'push'; }
+
+                      console.log(`Player ${player.name} initial outcome: ${outcome}`);
+
+                       if (outcome === 'lose' && playerValue === 20 && this.hasActiveJoker(player, "The Lucky Empty")) {
+                           console.log(`The Lucky Empty activated for ${player.name}!`);
+                           outcome = 'lucky_empty_saved';
+                       }
+
+
+                      let baseWinProfit = 0;
+                      let balanceChange = 0;
+
+                      switch (outcome) {
+                           case 'player_bust':
+                           case 'lose':
+                           case 'dealer_bj':
+                                message += ` (${playerValue} vs ${dealerValue}${dealerBlackjack ? ' BJ' : ''}): Lost $${playerBet}.`;
+                                balanceChange = 0;
+                                payout = -playerBet;
+                                break;
+                           case 'lucky_empty_saved':
+                                message += ` (${playerValue} vs ${dealerValue}) - Lucky Empty!: Saved $${playerBet}.`;
+                                balanceChange = playerBet;
+                                payout = 0;
+                                break;
+                           case 'dealer_bust':
+                                 if (playerBlackjack) { baseWinProfit = playerBet * 1.5; message += " (Dealer Bust - Blackjack Win!): "; }
+                                 else { baseWinProfit = playerBet * 1; message += " (Dealer Bust - Win!): "; }
+
+                                 if (this.hasActiveJoker(player, "Phantom Dealer")) {
+                                     console.log(`Phantom Dealer activated for ${player.name}! (Dealer Bust)`);
+                                     baseWinProfit *= 2;
+                                     message += "(Phantom!): ";
+                                 }
+                                 payout = baseWinProfit;
+                                 balanceChange = playerBet + payout;
+                                 message += `Won $${payout.toFixed(2)}.`;
+                                break;
+                           case 'player_bj':
+                                 baseWinProfit = playerBet * 1.5;
+                                 payout = baseWinProfit;
+                                 balanceChange = playerBet + payout;
+                                 message += ` (Blackjack vs ${dealerValue}): Won $${payout.toFixed(2)}.`;
+                                break;
+                           case 'win':
+                                 baseWinProfit = playerBet * 1;
+                                 payout = baseWinProfit;
+                                 balanceChange = playerBet + payout;
+                                 message += ` (${playerValue} vs ${dealerValue} - Win!): Won $${payout.toFixed(2)}.`;
+                                break;
+                           case 'push':
+                                 message += ` (${playerValue} vs ${dealerValue} - Push): Bet returned.`;
+                                 payout = 0;
+                                 balanceChange = playerBet;
+                                break;
+                            default:
+                                 console.error("Unhandled outcome for player", player.name, ":", outcome);
+                                 message += `: Unhandled outcome - ${outcome}`;
+                                 balanceChange = 0;
+                                 payout = 0;
+                      }
+
+                     console.log(`Player ${player.name}: Outcome: ${outcome}, Balance change this round: $${balanceChange.toFixed(2)}, Profit: $${payout.toFixed(2)}`);
+                     player.balance += balanceChange;
+
+                     console.log(`Player ${player.name}: Final balance: $${player.balance.toFixed(2)}`);
+
+                      this.updateBalanceDisplay(player);
+                      this.updateBetDisplay(player);
+
+                      finalMessages.push(message);
+
+                       player.currentBet = 0;
+                       player.hasStood = false;
+                       player.hasBusted = false;
+                       player.isFrozen = false;
+                 });
+
+                 this.setMessage(finalMessages.join(' | '));
+                 this.updateControlButtons();
+                 setTimeout(() => this.enterShopPhase(), 6000);
+            }
+
+             hasActiveJoker(player, jokerName) {
+                 if (!player || !player.activeJokers) return false;
+                 return player.activeJokers.some(joker => joker.name === jokerName);
+             }
+
+             triggerJokerEffect(player, jokerName, eventType) {
+                 const joker = player.activeJokers.find(j => j.name === jokerName);
+                 let effectResult = false;
+
+                 if (joker && typeof joker.effect === 'function') {
+                     if (joker.name === "The Cheat" && eventType === 'onRoundStart') {
+                         joker.effect(this, player);
+                         effectResult = true;
+                     }
+                     else if (joker.name === "Dead Time" && eventType === 'onDealerTurnStart') {
+                          joker.effect(this, player);
+                          effectResult = true;
+                     }
+                      else if (joker.name === "Lucky Seven" && eventType === 'onTurnEnd') {
+                           const playerValue = player.hand.getValue();
+                           if ([7, 17, 21].includes(playerValue)) {
+                                joker.effect(this, player);
+                                const bonus = 20;
+                                player.balance += bonus;
+                                console.log(`Lucky Seven activated for ${player.name}! +$${bonus}`);
+                                this.setMessage(`${player.name}'s Lucky Seven! +$${bonus}`, 1500, true);
+                                this.updateBalanceDisplay(player);
+                                effectResult = true;
+                           }
+                      }
+                 }
+                 return effectResult;
+             }
+        }
+
+        let game;
+
+        function initializeGameSetupUI() {
+            const setupAreaEl = document.getElementById('setup-area');
+            const gameAreaContentEl = document.getElementById('game-area-content');
+            const player2TypeSelect = document.getElementById('player-2-type');
+            const player3TypeSelect = document.getElementById('player-3-type');
+            const startGameSetupBtn = document.getElementById('start-game-setup-btn');
+            const gameMessageEl = document.getElementById('game-message');
+
+            setupAreaEl.style.display = 'flex';
+            gameAreaContentEl.style.display = 'none';
+            gameMessageEl.textContent = "Select players and click 'Start Game'. Player 1 is always human.";
+
+
+            startGameSetupBtn.addEventListener('click', () => {
+                const playerTypes = [
+                    'Human', // Player 1 is always Human
+                    player2TypeSelect.value,
+                    player3TypeSelect.value
+                ];
+
+                 const activePlayers = playerTypes.filter(type => type !== 'None');
+                 if (activePlayers.length === 0) {
+                      alert("Please select at least one player (Player 1 is required).");
+                      return;
+                 }
+
+                setupAreaEl.style.display = 'none';
+                gameAreaContentEl.style.display = 'flex';
+
+                try {
+                     game = new StrategicBlackjackGame(playerTypes);
+                     game.enterShopPhase();
+                 } catch (error) {
+                     console.error("Failed to start game:", error);
+                     alert("Error starting game: " + error.message);
+                       setupAreaEl.style.display = 'flex';
+                       gameAreaContentEl.style.display = 'none';
+                       gameMessageEl.textContent = "Error starting game. Please select players again.";
+                 }
+            });
+        }
+
+        window.onload = () => {
+            try {
+                initializeGameSetupUI();
+            } catch (error) {
+                console.error("Failed during initial window load setup:", error);
+                document.body.innerHTML = `<div style="color: red; padding: 20px;">Error during initial setup: ${error.message}. Please check console.</div>`;
+            }
+        };
+
+    </script>
+</body>
+</html>

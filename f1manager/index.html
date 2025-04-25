@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F1 Team Manager</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Basic styling for the body */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Styling for the main application container */
+        #app {
+            width: 95%;
+            max-width: 1200px;
+            padding: 25px;
+            border-radius: 12px;
+            background-color: rgba(20, 20, 20, 0.85);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.6);
+            margin-top: 80px;
+            margin-bottom: 30px;
+            box-sizing: border-box;
+            position: relative;
+             border: 1px solid #333;
+        }
+
+        /* Styling for the main title */
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #ff8700;
+            text-shadow: 0 0 6px rgba(255, 135, 0, 0.7);
+            font-size: 2rem;
+        }
+
+        /* Styling for section titles */
+        h2 {
+            margin-top: 2.5rem;
+            margin-bottom: 1.2rem;
+            color: #ff8700;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #ff8700;
+            padding-bottom: 0.6rem;
+            font-weight: 700;
+            text-shadow: none;
+        }
+        h3 {
+             margin-top: 1rem;
+            margin-bottom: 0.8rem;
+            color: #ff9a21;
+            font-size: 1.25rem;
+             font-weight: 700;
+             text-shadow: none;
+        }
+        h4{
+             margin-top: 0;
+            margin-bottom: 0.6rem;
+            color: #cccccc;
+            font-size: 1.05rem;
+             font-weight: 700;
+             border-bottom: 1px dotted #555;
+             padding-bottom: 0.4rem;
+        }
+
+        /* Styling for the fixed budget display */
+        #budget-display {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(10, 10, 10, 0.9);
+            color: #fff;
+            padding: 0.8rem 1.6rem;
+            border-radius: 6px;
+            z-index: 100;
+            font-size: 1.15rem;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+            border: 1px solid #ff8700;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+        }
+
+        /* Styling for the Race HQ & Driver Market Buttons */
+        #run-qualifying-button, #start-race-button, #accelerate-race-button, #next-gp-button, #next-season-button, #confirm-drivers-button, #clear-notifications-button {
+            padding: 0.8rem 1.6rem;
+            border-radius: 6px;
+            background-color: #e57300;
+            color: #ffffff;
+            border: none;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+            font-size: 0.95rem;
+            transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+            margin: 0 0.5rem 1rem 0.5rem;
+            max-width: 280px;
+            display: inline-block;
+            vertical-align: middle;
+            border-bottom: 2px solid #a05200;
+        }
+         #race-controls, #driver-market-controls {
+             text-align: center;
+             margin-bottom: 2rem;
+         }
+
+         #run-qualifying-button:hover:not(:disabled),
+         #start-race-button:hover:not(:disabled),
+         #accelerate-race-button:hover:not(:disabled),
+         #next-gp-button:hover:not(:disabled),
+         #next-season-button:hover:not(:disabled),
+         #confirm-drivers-button:hover:not(:disabled),
+         #clear-notifications-button:hover:not(:disabled) {
+            background-color: #ff8700;
+            transform: translateY(-1px);
+        }
+         #run-qualifying-button:active:not(:disabled),
+         #start-race-button:active:not(:disabled),
+         #accelerate-race-button:active:not(:disabled),
+         #next-gp-button:active:not(:disabled),
+         #next-season-button:active:not(:disabled),
+         #confirm-drivers-button:active:not(:disabled),
+         #clear-notifications-button:active:not(:disabled) {
+             transform: translateY(1px);
+             border-bottom-width: 1px;
+         }
+
+         #run-qualifying-button:disabled,
+         #start-race-button:disabled,
+         #accelerate-race-button:disabled,
+         #next-gp-button:disabled,
+         #next-season-button:disabled,
+         #confirm-drivers-button:disabled,
+         #clear-notifications-button:disabled {
+            background-color: #777;
+            cursor: not-allowed;
+            opacity: 0.6;
+             border-bottom-color: #555;
+        }
+         #start-race-button { background-color: #0d47a1; border-bottom-color: #05306e; display: none; }
+         #start-race-button:hover:not(:disabled) { background-color: #1565c0; }
+         #accelerate-race-button { background-color: #FFB300; color: #111; border-bottom-color: #cc8f00; display: none; }
+         #accelerate-race-button:hover:not(:disabled) { background-color: #FFCA28; }
+         #next-gp-button { background-color: #6a1b9a; border-bottom-color: #4a148c; display: none; }
+         #next-gp-button:hover:not(:disabled) { background-color: #8e24aa; }
+         #next-season-button { background-color: #2e7d32; border-bottom-color: #1b5e20; display: none; }
+         #next-season-button:hover:not(:disabled) { background-color: #388e3c; }
+         #confirm-drivers-button { background-color: #2e7d32; border-bottom-color: #1b5e20; }
+         #confirm-drivers-button:hover:not(:disabled) { background-color: #388e3c; }
+         #clear-notifications-button { background-color: #c62828; border-bottom-color: #8e0000; max-width: 200px; display: block; margin-left: auto; margin-right: auto;}
+         #clear-notifications-button:hover { background-color: #d32f2f; }
+
+
+        /* Styling for the grid containers */
+        #initial-budget-selection, #ecurie-selection, #drivers-list, #cars-list, #car-upgrade-options, #opponent-cars-list, #drivers-list-management, #driver-market-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+        #season-standings-list, #calendar-list {
+            grid-template-columns: 1fr;
+            display: grid;
+            gap: 0.6rem;
+        }
+
+        /* Styling for individual cards */
+        .card {
+            background-color: #2c2c2c;
+            padding: 1.8rem;
+            border-radius: 10px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border: 1px solid #404040;
+        }
+        .card:not(.disabled):hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(255, 135, 0, 0.2);
+            border-color: #ff8700;
+        }
+        .card h3 {
+            margin-top: 0; margin-bottom: 1.2rem; color: #fff; font-size: 1.15rem;
+            border-bottom: 1px solid #666; padding-bottom: 0.6rem; font-weight: 700;
+        }
+        .card ul { list-style: none; padding: 0; margin-bottom: 1.2rem; flex-grow: 1; }
+        .card li { margin-bottom: 0.6rem; color: #d0d0d0; font-size: 0.95rem; }
+         .card.market-selected { border: 2px solid #4CAF50; box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+         .card.market-current-player { border: 2px solid #00BCD4; }
+        .card li.selected-driver { color: #ff8700; font-weight: bold; }
+        .stat-increase { color: #81c784; font-size: 0.8em; margin-left: 5px; font-weight: bold; }
+        .stat-change { font-size: 0.8em; margin-left: 5px; font-weight: bold;}
+        .stat-change.positive { color: #81c784; }
+        .stat-change.negative { color: #ef5350; }
+        .card button {
+             padding: 0.8rem 1.6rem; border-radius: 6px; background-color: #ff8700; color: #ffffff; border: none; cursor: pointer; font-size: 0.9rem; transition: background-color 0.2s ease, transform 0.1s ease; width: 100%; box-sizing: border-box; margin-top: auto; font-family: 'Roboto', sans-serif; font-weight: 700; border-bottom: 2px solid #a05200;
+         }
+        .card button:hover:not(:disabled) { background-color: #ffa033; transform: translateY(-1px); }
+        .card button:active:not(:disabled) { transform: translateY(1px); border-bottom-width: 1px; }
+        .card button:disabled { background-color: #777; cursor: not-allowed; color: #bbb; border-bottom-color: #555;}
+
+        /* Race HQ Specific Styles */
+         #qualifying-results-area { background-color: #252525; padding: 1.2rem; border-radius: 8px; border: 1px solid #444; margin-bottom: 2rem; }
+         #qualifying-results-area h3 { margin-top: 0; color: #ff9a21; }
+         #qualifying-results-area h4 { color: #ccc; font-size: 1rem; margin-bottom: 0.5rem; border-bottom: 1px dotted #666; padding-bottom: 0.4rem; font-weight: 700;}
+         #qualifying-results-area ol { list-style: none; padding: 0; margin: 0; font-size: 0.9rem; }
+         #qualifying-results-area ol li { padding: 0.4rem 0.2rem; border-bottom: 1px dotted #555; }
+         #qualifying-results-area ol li:last-child { border-bottom: none; }
+         #qualifying-results-area ol li.player-driver { color: #ffae42; font-weight: bold; background-color: rgba(255, 135, 0, 0.05); border-radius: 3px; padding-left: 5px; }
+         #live-race-area { border: 1px dashed #ff8700; padding: 1.5rem; background-color: rgba(10,10,10,0.3); border-radius: 8px; margin-bottom: 2rem; }
+         #live-race-area h3 { margin-top: 0; color: #ff9a21; }
+         #live-lap-counter { font-size: 1.2rem; text-align: center; margin-bottom: 1.2rem; color: #eee; font-weight: 700; }
+         #live-leaderboard h4 { color: #ccc; font-size: 1rem; margin-bottom: 0.5rem; font-weight: 700; }
+         #live-leaderboard ol { list-style: none; padding: 0; margin: 0; font-size: 0.95rem; }
+         #live-leaderboard ol li { padding: 0.45rem 0.3rem; border-bottom: 1px solid #444; display: flex; justify-content: space-between; transition: background-color 0.2s ease; }
+         #live-leaderboard ol li:last-child { border-bottom: none; }
+         #live-leaderboard ol li:nth-child(odd) { background-color: rgba(255, 255, 255, 0.02); }
+         #live-leaderboard ol li.player-driver { color: #ffae42; font-weight: bold; background-color: rgba(255, 135, 0, 0.1); border-left: 3px solid #ff8700; padding-left: 8px;}
+         #live-leaderboard ol li .status-dnf { color: #ef5350; font-weight: bold; margin-left: 8px; }
+        #race-results { margin-top: 0; padding: 1.8rem; border-radius: 10px; background-color: #252525; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); border: 1px solid #444; }
+        #race-results h3 { margin-top: 0; margin-bottom: 1.2rem; color: #ff9a21; font-size: 1.3rem; }
+        #race-results ol { padding-left: 0; margin-bottom: 1.2rem; list-style: none; counter-reset: race-position; }
+        #race-results ol li { margin-bottom: 0.6rem; color: #d0d0d0; font-size: 1rem; display: flex; align-items: center; padding: 0.5rem 0; border-bottom: 1px dotted #555; }
+        #race-results ol li:last-child { border-bottom: none; }
+        #race-results ol li::before { content: counter(race-position) ". "; counter-increment: race-position; font-weight: bold; color: #ff8700; margin-right: 1rem; min-width: 2.2em; text-align: right; }
+        #race-results ol li.player-driver { background-color: rgba(255, 135, 0, 0.1); padding-left: 0.8rem; border-radius: 4px; font-weight: bold; color: #ffae42;}
+        #race-results ol li .status-dnf { color: #ef5350; font-weight: bold; margin-left: 8px; }
+        #race-results p#race-message { font-size: 0.95rem; color: #bbb; margin-top: 1.2rem; margin-bottom: 1.8rem; }
+        #prize-money-earned { margin-top: 1.8rem; padding-top: 1.2rem; border-top: 1px solid #555; }
+        #prize-money-earned h4 { color: #ff9a21; margin-bottom: 1rem; font-size: 1.1rem; }
+        #prize-money-earned ul { list-style: none; padding: 0; margin: 0 0 0.8rem 0; }
+        #prize-money-earned li { margin-bottom: 0.4rem; font-size: 0.95rem; color: #d0d0d0; }
+        #prize-money-earned p { font-weight: bold; color: #fff; margin-top: 1rem; font-size: 1.05rem; }
+        #visual-simulation-placeholder { display: none; }
+
+        /* General Styles */
+        .disabled{ opacity: 0.6; cursor: not-allowed; border-color: #555; }
+        .message-box { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px); background-color: rgba(10, 10, 10, 0.95); color: #fff; padding: 1rem 2rem; border-radius: 6px; z-index: 101; transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; opacity: 0; pointer-events: none; box-shadow: 0 3px 7px rgba(0,0,0,0.6); border: 1px solid #ff8700; text-align: center; font-size: 0.95rem; font-family: 'Roboto', sans-serif; }
+        .message-box.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: all; }
+        .message-box.error { background-color: rgba(198, 40, 40, 0.95); border-color: #ef5350; }
+        .message-box.success { background-color: rgba(46, 125, 50, 0.95); border-color: #66bb6a; }
+        .message-box.info { background-color: rgba(13, 71, 161, 0.95); border-color: #42a5f5; }
+
+        /* --- Main Tab Styles --- */
+        .tabs { display: flex; margin-bottom: 2rem; border-bottom: 2px solid #ff8700; flex-wrap: wrap; }
+        .tab-button { padding: 0.8rem 1.6rem; border: none; background-color: transparent; color: #ccc; cursor: pointer; font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 1rem; transition: color 0.2s ease, border-bottom 0.2s ease, background-color 0.2s ease; border-bottom: 3px solid transparent; margin-bottom: -2px; text-align: center; flex-grow: 1; }
+        .tab-button.active { color: #ff8700; border-bottom-color: #ff8700; background-color: rgba(255, 135, 0, 0.08); }
+        .tab-button:hover:not(.active) { color: #fff; background-color: rgba(255, 255, 255, 0.05); }
+        .tab-content { padding-top: 1.5rem; border-top: 1px solid #444; margin-top: -1px; }
+
+        /* --- Sub-Tab Styles --- */
+        .sub-tabs { display: flex; margin-bottom: 1.5rem; border-bottom: 1px solid #555; flex-wrap: wrap; }
+        .sub-tab-button { padding: 0.6rem 1.2rem; border: none; background-color: transparent; color: #aaa; cursor: pointer; font-family: 'Roboto', sans-serif; font-size: 0.9rem; font-weight: 700; transition: color 0.2s ease, border-bottom 0.2s ease, background-color 0.2s ease; border-bottom: 2px solid transparent; margin-right: 10px; margin-bottom: -1px; }
+        .sub-tab-button.active { color: #ffae42; border-bottom-color: #ffae42; background-color: rgba(255, 174, 66, 0.05); }
+        .sub-tab-button:hover:not(.active) { color: #ddd; background-color: rgba(255, 255, 255, 0.04); }
+        .sub-tab-content { display: none; padding-top: 1rem; }
+        .sub-tab-content.active { display: block; }
+
+        /* --- Chart Styles --- */
+        .chart-container { margin-bottom: 1.5rem; padding: 1rem; background-color: #2a2a2a; border-radius: 8px; border: 1px solid #444; }
+        .chart-title { color: #ff9a21; font-size: 1.1rem; margin-bottom: 1rem; font-weight: 700; }
+        .bar-chart-item { display: flex; align-items: center; margin-bottom: 0.75rem; font-size: 0.9rem; }
+        .bar-label { min-width: 100px; text-align: right; margin-right: 10px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bar-chart-item.player-team .bar-label { color: #ffae42; font-weight: bold; }
+        .bar-container { flex-grow: 1; background-color: #444; height: 20px; border-radius: 4px; overflow: hidden; position: relative; }
+        .bar { height: 100%; background-color: #ff8700; border-radius: 4px 0 0 4px; transition: width 0.5s ease-in-out; white-space: nowrap; overflow: hidden; }
+        .bar.speed { background-color: #d32f2f; }
+        .bar.handling { background-color: #1976d2; }
+        .bar.reliability { background-color: #388e3c; }
+        .bar-chart-item.player-team .bar { background-color: #ffae42; }
+        .bar-value { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: #fff; font-weight: bold; text-shadow: 1px 1px 1px rgba(0,0,0,0.7); }
+        .bar .bar-value-inside { padding-left: 5px; color: #fff; font-size: 0.8rem; line-height: 20px; font-weight: bold; }
+        #standings-chart-container canvas { max-height: 400px; }
+
+        /* --- Notification Styles --- */
+        #notifications-list {list-style: none; padding: 0; max-height: 400px; overflow-y: auto; background-color: #252525; border: 1px solid #444; border-radius: 6px; padding: 1rem;}
+        #notifications-list li { padding: 0.6rem 0.8rem; border-bottom: 1px dotted #555; font-size: 0.9rem; color: #ccc; }
+        #notifications-list li:last-child { border-bottom: none; }
+        #notifications-list li .timestamp { font-size: 0.75rem; color: #888; margin-right: 10px; display: inline-block; }
+        #notifications-list li .event-type { font-weight: bold; margin-right: 5px; }
+        #notifications-list li .event-type-upgrade { color: #81c784; }
+        #notifications-list li .event-type-transfer { color: #42a5f5; }
+        #notifications-list li .event-type-stats { color: #ffb74d; }
+        #notifications-list li.placeholder { color: #888; font-style: italic; text-align: center; }
+
+        /* Dev Tab Styles */
+        #selected-car-display { margin-bottom: 2rem; padding: 1.5rem; border-radius: 10px; background-color: #333; box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.5); border: 1px solid #555; }
+        #selected-car-display h4 { margin-top: 0; color: #ff9a21; font-size: 1.2rem; margin-bottom: 1rem; font-weight: 700;}
+        #selected-car-display ul { display: none; } /* Hide the old list */
+        #car-upgrade-options-container { margin-bottom: 2.5rem; }
+        #car-upgrade-options-container h3 { color: #ff9a21; margin-bottom: 1.2rem; font-size: 1.3rem; border-bottom: 1px solid #666; padding-bottom: 0.7rem; font-weight: 700;}
+        #car-upgrade-options .card { background-color: #3a3a3a; }
+        #car-upgrade-options .card ul { margin-bottom: 0.8rem; }
+        #car-upgrade-options .card button { margin-top: 1.2rem; }
+        #opponent-cars-list-container { margin-top: 2.5rem; border-top: 2px solid #ff8700; padding-top: 2rem; }
+        #opponent-cars-list-container h3 { margin-bottom: 1.2rem; color: #ff9a21; text-shadow: none; font-size: 1.3rem; font-weight: 700;}
+        #opponent-cars-list-container h3 small { font-size: 0.85rem; color: #bbb; font-weight: 400; margin-left: 12px; }
+        #opponent-cars-list .card { background-color: #282828; opacity: 0.85; border-color: #383838; }
+
+         /* Standings Tab Styles */
+         #season-info { text-align: center; margin-bottom: 2rem; font-size: 1.2rem; color: #ccc; font-weight: 700;}
+         #standings-chart-container { margin-bottom: 2rem; }
+         #season-standings-list-container h3 { color: #ff9a21; margin-bottom: 1.2rem; font-size: 1.3rem; }
+         #season-standings-list { list-style: none; padding: 0; background-color: #252525; border-radius: 8px; border: 1px solid #444; overflow: hidden; }
+         #season-standings-list li { display: flex; align-items: center; padding: 0.8rem 1rem; border-bottom: 1px solid #444; font-size: 0.95rem; transition: background-color 0.2s ease; }
+         #season-standings-list li:last-child { border-bottom: none; }
+         #season-standings-list li:hover { background-color: #333; }
+         .position-number { font-weight: bold; color: #ff8700; min-width: 3em; text-align: right; margin-right: 1rem; }
+         #season-standings-list li span:nth-child(2) { color: #e0e0e0; margin-right: 1rem; flex-grow: 1; }
+         #season-standings-list li span:last-child { font-weight: bold; color: #fff; min-width: 90px; text-align: right; }
+         #season-standings-list li.player-team { background-color: rgba(255, 135, 0, 0.1); border-left: 4px solid #ff8700; padding-left: calc(1rem - 4px);}
+         #season-standings-list li.player-team span:nth-child(2) { color: #ffae42; font-weight: bold; }
+
+         /* Calendar Tab Styles */
+         #calendar-list-container h3 { color: #ff9a21; margin-bottom: 1.2rem; font-size: 1.3rem; }
+         #calendar-list { list-style: none; padding: 0; background-color: #252525; border-radius: 8px; border: 1px solid #444; overflow: hidden;}
+         #calendar-list li { padding: 1rem 1.2rem; border-bottom: 1px solid #444; font-size: 1rem; transition: background-color 0.2s ease;}
+         #calendar-list li:last-child { border-bottom: none; }
+         #calendar-list li:hover { background-color: #333; }
+         #calendar-list li.completed { color: #888; }
+         #calendar-list li.completed .race-details { text-decoration: line-through; opacity: 0.7; }
+         #calendar-list li.next-race { font-weight: bold; color: #ff8700; background-color: rgba(255, 135, 0, 0.1); border-left: 4px solid #ff8700; padding-left: calc(1.2rem - 4px);}
+         #calendar-list li ul { list-style: none; padding: 0.6rem 0 0 1.2rem; margin: 0; font-size: 0.85rem; color: #bbb; font-weight: normal; }
+         #calendar-list li ul li { padding: 0.15rem 0; border: none; }
+         .race-name { font-weight: bold; display: block; margin-bottom: 0.4rem; font-size: 1.05rem; }
+
+
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            body { align-items: flex-start; }
+            #app { width: 100%; padding: 15px; border-radius: 0; margin-top: 70px; box-shadow: none; }
+            #budget-display { font-size: 1rem; padding: 0.6rem 1.2rem; }
+            #run-qualifying-button, #start-race-button, #accelerate-race-button, #next-gp-button, #next-season-button, #confirm-drivers-button, #clear-notifications-button { padding: 0.7rem 1.4rem; font-size: 0.9rem; max-width: 90%; display: block; margin-left: auto; margin-right: auto;}
+            #race-controls, #driver-market-controls { margin-bottom: 1.5rem; }
+            #initial-budget-selection, #ecurie-selection, #drivers-list, #cars-list, #car-upgrade-options, #season-standings-list, #calendar-list, #opponent-cars-list, #drivers-list-management, #driver-market-list { grid-template-columns: 1fr; gap: 1.2rem;}
+            .card { padding: 1.2rem; }
+            .card button { font-size: 0.85rem; padding: 0.7rem 1.2rem; }
+            h1{ font-size: 1.8rem; } h2{ font-size: 1.3rem; } h3{ font-size: 1.15rem; } h4 { font-size: 1rem;}
+            .tabs { margin-bottom: 1.5rem; }
+            .tab-button { padding: 0.7rem 1rem; font-size: 0.9rem; flex-basis: 33%; }
+            .sub-tabs { margin-bottom: 1rem;}
+            .sub-tab-button { font-size: 0.85rem; padding: 0.5rem 1rem; margin-right: 5px;}
+            #qualifying-results-area ol { font-size: 0.85rem;}
+            #live-leaderboard ol { font-size: 0.9rem; }
+            #race-results ol li { font-size: 0.95rem; }
+            #race-results ol li::before { margin-right: 0.6rem; min-width: 1.8em; }
+            #season-info { font-size: 1.1rem; }
+            .position-number { min-width: 2.2em; margin-right: 0.8rem;}
+            .message-box { width: 90%; font-size: 0.9rem; padding: 0.9rem 1.5rem; top: 75px; }
+            #notifications-list li { font-size: 0.85rem;}
+        }
+         @media (max-width: 480px) {
+              h1 { font-size: 1.6rem; } h2 { font-size: 1.1rem; } h3 { font-size: 1.05rem; } h4 { font-size: 0.95rem;}
+              .tab-button { flex-basis: 50%; font-size: 0.8rem; padding: 0.6rem 0.8rem;}
+              .sub-tab-button { flex-basis: calc(50% - 5px); font-size: 0.8rem; padding: 0.5rem 0.8rem;}
+              .card h3 { font-size: 1.05rem; } .card li { font-size: 0.85rem; }
+              #budget-display { font-size: 0.9rem; padding: 0.5rem 1rem;}
+              #run-qualifying-button, #start-race-button, #accelerate-race-button, #next-gp-button, #next-season-button, #confirm-drivers-button, #clear-notifications-button { font-size: 0.85rem; padding: 0.6rem 1rem;}
+              #season-info { font-size: 1rem; }
+              #season-standings-list li { font-size: 0.85rem; }
+              .position-number { font-size: 0.85rem; min-width: 2em;}
+              #season-standings-list li span:last-child { min-width: 70px; font-size: 0.85rem;}
+              #calendar-list li { font-size: 0.9rem; }
+              #live-leaderboard ol { font-size: 0.85rem; }
+              #race-results ol li { font-size: 0.85rem;}
+              #notifications-list li { font-size: 0.8rem;}
+         }
+
+    </style>
+</head>
+<body>
+    <!-- Budget Display -->
+    <div id="budget-display">Budget: $0</div>
+
+    <div id="app">
+        <h1>F1 Team Manager</h1>
+
+        <!-- Initial Setup Screens -->
+        <div id="initial-budget-selection"></div>
+        <div id="ecurie-selection" style="display: none;"></div>
+        <div id="initial-driver-selection" style="display: none;">
+             <h2 id="drivers-title">Select Your Two Drivers</h2>
+             <div id="drivers-list"></div>
+        </div>
+
+        <!-- Main Management Screen -->
+        <div id="team-management-screen" style="display: none;">
+            <div class="tabs">
+                <button class="tab-button active" data-tab="development">Car Dev</button>
+                <button class="tab-button" data-tab="drivers">Drivers</button>
+                <button class="tab-button" data-tab="standings">Standings</button>
+                <button class="tab-button" data-tab="calendar">Calendar</button>
+                 <button class="tab-button" data-tab="race">Race HQ</button>
+                 <button class="tab-button" data-tab="notifications">Notifications</button>
+            </div>
+
+             <!-- Development Tab -->
+            <div id="development-tab" class="tab-content">
+                <h2>Car Development</h2>
+                 <div id="selected-car-display">
+                     <h4>Your Car (<span id="car-name-placeholder">Car Name</span> - <span id="car-year-placeholder">Year</span>)</h4>
+                     <div id="car-stats-chart" class="chart-container"></div>
+                 </div>
+                 <div id="car-upgrade-options-container">
+                     <h3>Upgrade Options</h3>
+                     <div id="car-upgrade-options"></div>
+                 </div>
+                 <div id="opponent-cars-list-container">
+                      <h3>Opponent Cars <small>(Upgrades from last race shown in <span class="stat-increase">green</span>)</small></h3>
+                     <div id="opponent-cars-list"></div>
+                 </div>
+            </div>
+
+             <!-- Drivers Tab -->
+             <div id="drivers-tab" class="tab-content" style="display: none;">
+                <h2>Your Drivers</h2>
+                <p>Your selected drivers are highlighted below. You cannot change drivers mid-season in this version.</p>
+                <div id="drivers-list-management"></div>
+            </div>
+
+            <!-- Standings Tab -->
+            <div id="standings-tab" class="tab-content" style="display: none;">
+                <h2>Season Standings</h2>
+                <p id="season-info">Season Info Placeholder</p>
+                 <div id="standings-chart-container" class="chart-container">
+                    <h4 class="chart-title">Driver Points Progression</h4>
+                    <canvas id="standings-line-chart-canvas"></canvas>
+                     <p id="standings-chart-placeholder" style="text-align: center; color: #aaa; margin-top: 1rem;">Complete the first race to see the chart.</p>
+                </div>
+                <div id="season-standings-list-container">
+                     <ul id="season-standings-list"></ul>
+                 </div>
+            </div>
+
+             <!-- Calendar Tab -->
+             <div id="calendar-tab" class="tab-content" style="display: none;">
+                <h2>Race Calendar</h2>
+                 <p id="calendar-info">Calendar Info Placeholder</p>
+                  <div id="calendar-list-container">
+                     <ul id="calendar-list"></ul>
+                 </div>
+             </div>
+
+            <!-- Race Tab (REVISED STRUCTURE with Sub-Tabs) -->
+            <div id="race-tab" class="tab-content" style="display: none;">
+                 <h2>Race HQ</h2>
+                  <div id="race-controls">
+                     <button id="run-qualifying-button" style="display: none;">Run Qualifying</button>
+                     <button id="start-race-button" style="display: none;">Start Race (Live)</button>
+                     <button id="accelerate-race-button" style="display: none;">Accelerate Race</button>
+                     <button id="next-gp-button" style="display: none;">Next Race Weekend</button>
+                     <button id="next-season-button" style="display: none;">Start Next Season</button>
+                 </div>
+                 <div class="sub-tabs">
+                     <button class="sub-tab-button active" data-subtab="qualifying">Quali/Grid</button>
+                     <button class="sub-tab-button" data-subtab="live">Live Race</button>
+                     <button class="sub-tab-button" data-subtab="final">Final Results</button>
+                 </div>
+                 <div id="race-qualifying-subtab-content" class="sub-tab-content active">
+                     <div id="qualifying-results-area">
+                         <h3 id="qualifying-title">Qualifying</h3>
+                         <div id="q1-results" style="margin-bottom: 0.5rem;"><h4>Q1 Results:</h4><ol></ol></div>
+                         <div id="q2-results" style="margin-bottom: 0.5rem;"><h4>Q2 Results:</h4><ol></ol></div>
+                         <div id="q3-results" style="margin-bottom: 0.5rem;"><h4>Q3 Results:</h4><ol></ol></div>
+                         <div id="starting-grid" style="margin-top: 1rem;"><h4>Starting Grid:</h4><ol></ol></div>
+                     </div>
+                 </div>
+                 <div id="race-live-subtab-content" class="sub-tab-content">
+                     <div id="live-race-area">
+                         <h3>Race Live</h3>
+                         <p id="live-lap-counter">Lap: 0 / 60</p>
+                         <div id="live-leaderboard">
+                             <h4>Leaderboard:</h4>
+                             <ol></ol>
+                         </div>
+                     </div>
+                     <p id="live-race-placeholder" style="text-align: center; color: #aaa; margin-top: 2rem;">Start the race to see live updates.</p>
+                 </div>
+                 <div id="race-final-subtab-content" class="sub-tab-content">
+                     <div id="race-results">
+                         <h3 id="race-results-title">Race Results</h3>
+                         <ol></ol>
+                         <p id="race-message">Race statistics will appear here.</p>
+                          <div id="prize-money-earned">
+                               <h4>Prize Money Earned (Player):</h4>
+                               <ul></ul>
+                               <p>Total Earned: $0</p>
+                          </div>
+                     </div>
+                      <p id="final-results-placeholder" style="text-align: center; color: #aaa; margin-top: 2rem;">Complete the race to see final results.</p>
+                 </div>
+                 <div id="visual-simulation-placeholder" style="display:none;"></div>
+            </div> <!-- End #race-tab -->
+
+             <!-- Notifications Tab -->
+             <div id="notifications-tab" class="tab-content" style="display: none;">
+                <h2>Notifications</h2>
+                <p>Recent game events and changes:</p>
+                <ul id="notifications-list" style="list-style: none; padding: 0; max-height: 400px; overflow-y: auto; background-color: #252525; border: 1px solid #444; border-radius: 6px; padding: 1rem;">
+                    <li class="placeholder">No notifications yet.</li>
+                </ul>
+                <button id="clear-notifications-button" style="margin-top: 1rem;">Clear Log</button>
+            </div>
+
+        </div> <!-- End #team-management-screen -->
+
+         <!-- Driver Market Screen -->
+         <div id="driver-market-screen" style="display: none;">
+             <h2 id="driver-market-title">Driver Market - End of Season <span id="market-season-year"></span></h2>
+             <p>Select your two drivers for the upcoming season. Current drivers are highlighted blue. Deselect a current driver to free up a slot and budget. Newly selected drivers are highlighted green.</p>
+             <div id="driver-market-list"></div>
+             <div id="driver-market-controls">
+                  <button id="confirm-drivers-button" disabled>Confirm Team for Next Season</button>
+             </div>
+         </div>
+
+         <!-- Message Box -->
+         <div id="message-box" class="message-box"></div>
+    </div> <!-- End #app -->
+
+    <script>
+        // --- Data Arrays (Constants) ---
+        const EcuriesData = [ { id: 1, name: 'Mercedes', cost: 200000000, defaultCarId: 1, defaultDriverIds: [1, 6] }, { id: 2, name: 'Red Bull', cost: 180000000, defaultCarId: 2, defaultDriverIds: [2, 7] }, { id: 3, name: 'Ferrari', cost: 170000000, defaultCarId: 3, defaultDriverIds: [3, 5] }, { id: 4, name: 'McLaren', cost: 150000000, defaultCarId: 4, defaultDriverIds: [4, 19] }, { id: 5, name: 'Alpine', cost: 140000000, defaultCarId: 5, defaultDriverIds: [9, 10] }, { id: 6, name: 'Aston Martin', cost: 160000000, defaultCarId: 6, defaultDriverIds: [8, 14] }, { id: 7, name: 'Alfa Romeo', cost: 120000000, defaultCarId: 7, defaultDriverIds: [11, 15] }, { id: 8, name: 'Haas', cost: 110000000, defaultCarId: 8, defaultDriverIds: [16, 17] }, { id: 9, name: 'AlphaTauri', cost: 130000000, defaultCarId: 9, defaultDriverIds: [18, 13] }, { id: 10, name: 'Williams', cost: 100000000, defaultCarId: 10, defaultDriverIds: [12, 20] }, ];
+        const CarsData = [ { id: 1, name: 'W14', speed: 95, handling: 94, reliability: 92, cost: 0 }, { id: 2, name: 'RB19', speed: 96, handling: 93, reliability: 94, cost: 0 }, { id: 3, name: 'SF23', speed: 94, handling: 95, reliability: 90, cost: 0 }, { id: 4, name: 'MCL60', speed: 93, handling: 92, reliability: 93, cost: 0 }, { id: 5, name: 'A523', speed: 92, handling: 91, reliability: 91, cost: 0 }, { id: 6, name: 'AMR23', speed: 94, handling: 92, reliability: 92, cost: 0 }, { id: 7, name: 'C43', speed: 90, handling: 89, reliability: 90, cost: 0 }, { id: 8, name: 'VF-23', speed: 88, handling: 87, reliability: 88, cost: 0 }, { id: 9, name: 'AT04', speed: 89, handling: 88, reliability: 89, cost: 0 }, { id: 10, name: 'FW45', speed: 87, handling: 86, reliability: 87, cost: 0 }, ];
+        const UpgradesData = [ { id: 1, name: 'Engine Mk II', cost: 50000000, effect: { stat: 'speed', value: 5 } }, { id: 2, name: 'Aero Package Alpha', cost: 40000000, effect: { stat: 'handling', value: 5 } }, { id: 3, name: 'Reliability Boost', cost: 30000000, effect: { stat: 'reliability', value: 5 } }, { id: 4, name: 'Brakes Upgrade', cost: 25000000, effect: { stat: 'handling', value: 3 } }, { id: 5, name: 'Lightweight Chassis', cost: 60000000, effect: { stat: 'speed', value: 4 } }, { id: 6, name: 'Suspension Tuning', cost: 35000000, effect: { stat: 'handling', value: 4 } }, { id: 7, name: 'Cooling System V2', cost: 20000000, effect: { stat: 'reliability', value: 4 } }, ];
+        const DriversData = [ { id: 1, name: 'L. Hamilton', skill: 95, cost: 25000000, qualyPace: 96, racePace: 94, consistency: 95, overtaking: 98, defending: 95 }, { id: 2, name: 'M. Verstappen', skill: 96, cost: 26000000, qualyPace: 98, racePace: 97, consistency: 92, overtaking: 97, defending: 96 }, { id: 3, name: 'C. Leclerc', skill: 94, cost: 22000000, qualyPace: 97, racePace: 91, consistency: 88, overtaking: 92, defending: 89 }, { id: 4, name: 'L. Norris', skill: 93, cost: 20000000, qualyPace: 92, racePace: 93, consistency: 94, overtaking: 90, defending: 91 }, { id: 5, name: 'C. Sainz', skill: 91, cost: 18000000, qualyPace: 90, racePace: 92, consistency: 93, overtaking: 88, defending: 94 }, { id: 6, name: 'G. Russell', skill: 92, cost: 19000000, qualyPace: 94, racePace: 90, consistency: 91, overtaking: 89, defending: 93 }, { id: 7, name: 'S. Perez', skill: 89, cost: 17000000, qualyPace: 88, racePace: 90, consistency: 89, overtaking: 91, defending: 90 }, { id: 8, name: 'F. Alonso', skill: 90, cost: 18000000, qualyPace: 89, racePace: 95, consistency: 98, overtaking: 96, defending: 98 }, { id: 9, name: 'P. Gasly', skill: 87, cost: 14000000, qualyPace: 89, racePace: 86, consistency: 87, overtaking: 88, defending: 85 }, { id: 10, name: 'E. Ocon', skill: 86, cost: 13000000, qualyPace: 87, racePace: 85, consistency: 88, overtaking: 85, defending: 88 }, { id: 11, name: 'V. Bottas', skill: 88, cost: 15000000, qualyPace: 91, racePace: 87, consistency: 90, overtaking: 84, defending: 86 }, { id: 12, name: 'A. Albon', skill: 85, cost: 12000000, qualyPace: 88, racePace: 84, consistency: 86, overtaking: 82, defending: 83 }, { id: 13, name: 'D. Ricciardo', skill: 84, cost: 11000000, qualyPace: 86, racePace: 83, consistency: 85, overtaking: 89, defending: 80 }, { id: 14, name: 'L. Stroll', skill: 82, cost: 10000000, qualyPace: 82, racePace: 81, consistency: 80, overtaking: 80, defending: 82 }, { id: 15, name: 'Z. Guanyu', skill: 81, cost: 9000000, qualyPace: 83, racePace: 82, consistency: 84, overtaking: 79, defending: 81 }, { id: 16, name: 'K. Magnussen', skill: 83, cost: 10500000, qualyPace: 85, racePace: 80, consistency: 82, overtaking: 86, defending: 87 }, { id: 17, name: 'N. Hulkenberg', skill: 84, cost: 11000000, qualyPace: 87, racePace: 81, consistency: 89, overtaking: 81, defending: 84 }, { id: 18, name: 'Y. Tsunoda', skill: 80, cost: 8500000, qualyPace: 84, racePace: 79, consistency: 78, overtaking: 83, defending: 79 }, { id: 19, name: 'O. Piastri', skill: 86, cost: 12000000, qualyPace: 90, racePace: 88, consistency: 92, overtaking: 87, defending: 85 }, { id: 20, name: 'L. Sargeant', skill: 79, cost: 7000000, qualyPace: 80, racePace: 78, consistency: 75, overtaking: 78, defending: 77 }, ];
+        const RacesData = [ { id: 1, name: 'Bahrain GP', length: 308.238, laps: 57, speed: 85, handling: 85, reliability: 85 }, { id: 2, name: 'Saudi Arabia GP', length: 308.450, laps: 50, speed: 95, handling: 80, reliability: 80 }, { id: 3, name: 'Australia GP', length: 307.574, laps: 58, speed: 90, handling: 90, reliability: 80 }, { id: 4, name: 'Azerbaijan GP', length: 306.049, laps: 51, speed: 100, handling: 75, reliability: 75 }, { id: 5, name: 'Miami GP', length: 308.326, laps: 57, speed: 85, handling: 90, reliability: 80 }, { id: 6, name: 'Emilia Romagna GP', length: 309.049, laps: 63, speed: 88, handling: 88, reliability: 82 }, { id: 7, name: 'Monaco GP', length: 260.286, laps: 78, speed: 60, handling: 100, reliability: 70 }, { id: 8, name: 'Spain GP', length: 307.237, laps: 66, speed: 85, handling: 90, reliability: 80 }, { id: 9, name: 'Canada GP', length: 305.270, laps: 70, speed: 90, handling: 85, reliability: 80 }, { id: 10, name: 'Austria GP', length: 306.452, laps: 71, speed: 90, handling: 85, reliability: 85 }, { id: 11, name: 'Great Britain GP', length: 306.198, laps: 52, speed: 92, handling: 92, reliability: 78 }, { id: 12, name: 'Hungary GP', length: 306.630, laps: 70, speed: 75, handling: 95, reliability: 80 }, { id: 13, name: 'Belgium GP', length: 308.052, laps: 44, speed: 98, handling: 70, reliability: 80 }, { id: 14, name: 'Netherlands GP', length: 305.876, laps: 72, speed: 70, handling: 98, reliability: 80 }, { id: 15, name: 'Italy GP', length: 306.720, laps: 53, speed: 100, handling: 65, reliability: 80 }, { id: 16, name: 'Singapore GP', length: 306.320, laps: 62, speed: 80, handling: 95, reliability: 85 }, { id: 17, name: 'Japan GP', length: 307.471, laps: 53, speed: 92, handling: 90, reliability: 78 }, { id: 18, name: 'Qatar GP', length: 306.660, laps: 57, speed: 95, handling: 85, reliability: 80 }, { id: 19, name: 'USA GP', length: 308.405, laps: 56, speed: 88, handling: 90, reliability: 82 }, { id: 20, name: 'Mexico GP', length: 305.584, laps: 71, speed: 90, handling: 85, reliability: 85 }, { id: 21, name: 'Brazil GP', length: 305.909, laps: 71, speed: 88, handling: 88, reliability: 82 }, { id: 22, name: 'Las Vegas GP', length: 310.000, laps: 50, speed: 95, handling: 80, reliability: 80 }, { id: 23, name: 'Abu Dhabi GP', length: 305.355, laps: 58, speed: 85, handling: 85, reliability: 85 }, { id: 24, name: 'China GP', length: 305.066, laps: 56, speed: 90, handling: 89, reliability: 81 }, ];
+        const PointsSystem = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+        const PrizeMoneyPerPoint = 300000;
+        const PrizeMoneyTop3Bonus = 1000000;
+        const BudgetOptions = [ { amount: 175000000, name: 'Challenger ($175M)' }, { amount: 200000000, name: 'Midfield ($200M)' }, { amount: 250000000, name: 'Top Team ($250M)' }, ];
+
+        // --- Global State Variables ---
+        let gameState = 'SETUP'; // SETUP, MANAGEMENT, DRIVER_MARKET, SEASON_END
+        let teamName = '', selectedEcurieId = null, selectedDriverIds = [], selectedCar = null, budget = 0;
+        let purchasedUpgrades = {}, driverSeasonScores = {}, currentSeasonYear = 2024, currentRaceIndex = 0;
+        let currentDrivers = [], currentCars = [], currentEcuries = [];
+        let aiTeamBudgets = {}, aiTeamUpgrades = {}, lastAIRaceUpgrades = {};
+        let currentSeasonCalendar = [], totalRacesInSeason = RacesData.length;
+        const maxStatValuePlayer = 120, maxStatValueAI = 115;
+        const baseBudgetNextSeason = 10000000, playerBonusPerPoint = 50000, aiBaseBudgetNextSeason = 10000000, aiBonusPerPoint = 5000;
+        let qualifyingResults = { q1: [], q2: [], q3: [] }, startingGrid = [], raceLeaderboard = [], currentLap = 0, raceIntervalId = null, dnfCountThisRace = 0, raceCompletedForCurrentIndex = false;
+        let maxDnfThisRace = 0;
+        let marketSelectedDriverIds = [];
+        let notificationsLog = [];
+        const MAX_NOTIFICATIONS = 50;
+        let driverRaceHistory = {};
+        let standingsChartInstance = null;
+        const RACE_DURATION_SECONDS = 60, RACE_UPDATE_INTERVAL_MS = 500, TOTAL_RACE_SEGMENTS = (RACE_DURATION_SECONDS * 1000) / RACE_UPDATE_INTERVAL_MS, CONCEPTUAL_LAPS = 60;
+        const QUALI_DRIVER_WEIGHT = 0.5, QUALI_CAR_SPEED_WEIGHT = 0.3, QUALI_CAR_HANDLING_WEIGHT = 0.2, QUALI_RANDOM_FACTOR = 0.05;
+        const RACE_DRIVER_PACE_WEIGHT = 0.4, RACE_CAR_SPEED_WEIGHT = 0.25, RACE_CAR_HANDLING_WEIGHT = 0.15, RACE_CONSISTENCY_FACTOR = 0.1;
+        const RACE_OVERTAKE_BASE_CHANCE = 0.5, RACE_OVERTAKE_SKILL_FACTOR = 0.01, RACE_DEFEND_SKILL_FACTOR = 0.01;
+        const RACE_RELIABILITY_DNF_THRESHOLD = 0.5, PROGRESS_PER_SEGMENT_BASE = 100;
+
+        // --- Helper Functions ---
+        function showMessage(message, type = 'info', duration = 3000) { const mb = document.getElementById('message-box'); if (!mb) return; if (mb.timeoutId) clearTimeout(mb.timeoutId); mb.textContent = message; mb.className = `message-box ${type} show`; mb.timeoutId = setTimeout(() => { mb.classList.remove('show'); mb.timeoutId = null; }, duration); }
+        function formatNumber(n) { return n.toLocaleString('en-US'); }
+        function getTeamById(id) { return currentEcuries.find(t => t.id === id); }
+        function getDriverById(id) { const drvId = typeof id === 'string' ? parseInt(id) : id; return currentDrivers.find(d => d.id === drvId); }
+        function getCarById(id) { return currentCars.find(c => c.id === id); }
+        function getBaseCarDataById(id) { return CarsData.find(c => c.id === id); }
+        function shuffleArray(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } }
+        function getOrdinalSuffix(n) { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+        function generateSeasonCalendar() { currentSeasonCalendar = JSON.parse(JSON.stringify(RacesData)); shuffleArray(currentSeasonCalendar); totalRacesInSeason = currentSeasonCalendar.length; console.log(`Generated ${currentSeasonYear} Calendar:`, currentSeasonCalendar.map(r => r.name)); }
+
+        // --- Notification Helper ---
+        function addNotification(message, type = 'info') {
+             const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+             notificationsLog.unshift({ message, type, timestamp });
+             if (notificationsLog.length > MAX_NOTIFICATIONS) { notificationsLog.pop(); }
+             if (document.getElementById('notifications-tab')?.style.display === 'block') { renderNotifications(); }
+        }
+
+        // --- Calculation Helpers ---
+        function calculateQualifyingPerformance(driver, car, track) { let s = 200; s -= driver.qualyPace * QUALI_DRIVER_WEIGHT; s -= car.speed * QUALI_CAR_SPEED_WEIGHT * (track.speed / 90); s -= car.handling * QUALI_CAR_HANDLING_WEIGHT * (track.handling / 90); const r = (Math.random() * 2 - 1) * s * QUALI_RANDOM_FACTOR; return Math.max(0.1, s + r); }
+        function calculateRaceSegmentPerformance(driver, car, track) { let p = PROGRESS_PER_SEGMENT_BASE; p += (driver.racePace - 85) * RACE_DRIVER_PACE_WEIGHT; p += (car.speed - 85) * RACE_CAR_SPEED_WEIGHT * (track.speed / 90); p += (car.handling - 85) * RACE_CAR_HANDLING_WEIGHT * (track.handling / 90); const c = (Math.random() * 2 - 1) * (100 - driver.consistency) * RACE_CONSISTENCY_FACTOR; p += c; return Math.max(1, p); }
+        function checkReliability(driver, car, track) { if (dnfCountThisRace >= maxDnfThisRace) return false; const rt = 99.5 - (track.reliability * 0.05); const cr = car.reliability + (Math.random() * 5 - 2.5); if (cr < rt && Math.random() < 0.1) { const dc = (rt - cr) / 50 + 0.01; if (Math.random() < dc) return true; } return false; }
+        function attemptOvertake(atkE, defE, track) { if (!atkE || !defE || atkE.status !== 'Racing' || defE.status !== 'Racing') return false; const a = atkE.driver, cA = atkE.car; const d = defE.driver, cD = defE.car; let tf = 1.0 + (track.speed - 85) / 100 - (track.handling - 85) / 150; let asc = a.overtaking * RACE_OVERTAKE_SKILL_FACTOR + (cA.speed / 150); let dsc = d.defending * RACE_DEFEND_SKILL_FACTOR + (cD.handling / 150); let oc = RACE_OVERTAKE_BASE_CHANCE + (asc - dsc); oc *= tf; oc = Math.max(0.05, Math.min(0.95, oc)); return Math.random() < oc; }
+
+        // --- Stat Randomization ---
+        function randomizeBetween(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+        function clamp(value, min, max) { return Math.max(min, Math.min(value, max)); }
+        function randomizeCarStats() {
+            console.log("Randomizing Car Stats...");
+            addNotification("Randomizing end-of-season car stats...", 'stats');
+            const carStatKeys = ['speed', 'handling', 'reliability'];
+            const baseCars = JSON.parse(JSON.stringify(CarsData));
+            currentCars.forEach(car => {
+                const baseCar = baseCars.find(bc => bc.id === car.id);
+                if (!baseCar) return;
+                let changesLog = [];
+                carStatKeys.forEach(stat => {
+                    const change = randomizeBetween(-2, 2);
+                    const oldValue = car[stat];
+                    car[stat] = clamp(baseCar[stat] + change, 50, maxStatValueAI);
+                    if (car[stat] !== oldValue) { changesLog.push(`${stat.charAt(0).toUpperCase() + stat.slice(1)} ${car[stat] > oldValue ? '+' : ''}${car[stat] - oldValue}`); }
+                });
+                 if (changesLog.length > 0) {
+                    const team = currentEcuries.find(t => t.defaultCarId === car.id);
+                    addNotification(`Car ${team?.name || 'Unknown'}'s ${car.name} stats changed: ${changesLog.join(', ')}`, 'stats');
+                 }
+            });
+            if (selectedEcurieId) { selectedCar = getCarById(getTeamById(selectedEcurieId)?.defaultCarId); }
+            addNotification("Car stat randomization complete.", 'stats');
+        }
+        function randomizeDriverStats() {
+            console.log("Randomizing Driver Stats...");
+            addNotification("Randomizing end-of-season driver stats...", 'stats');
+            const driverStatKeys = ['qualyPace', 'racePace', 'consistency', 'overtaking', 'defending'];
+            const baseDrivers = JSON.parse(JSON.stringify(DriversData));
+            currentDrivers.forEach(driver => {
+                 const baseDriver = baseDrivers.find(d => d.id === driver.id);
+                 if (!baseDriver) return;
+                 let changesLog = [];
+                driverStatKeys.forEach(stat => {
+                    const change = randomizeBetween(-2, 2);
+                    const oldValue = driver[stat];
+                    driver[stat] = clamp(baseDriver[stat] + change, 50, 100);
+                     if (driver[stat] !== oldValue) { changesLog.push(`${stat} ${driver[stat] > oldValue ? '+' : ''}${driver[stat] - oldValue}`); }
+                });
+                 if (changesLog.length > 0) {
+                     addNotification(`Driver ${driver.name}'s stats changed: ${changesLog.join(', ')}`, 'stats');
+                 }
+            });
+            addNotification("Driver stat randomization complete.", 'stats');
+        }
+
+
+        // --- UI Rendering Functions ---
+        function renderBudgetSelection() { const el = document.getElementById('initial-budget-selection'); if (!el) return; el.innerHTML = '<h2>Select Your Starting Budget</h2>' + BudgetOptions.map(o => `<div class="card"><h3>${o.name}</h3><ul><li>Amount: $${formatNumber(o.amount)}</li></ul><button data-budget-amount="${o.amount}">Select Budget</button></div>`).join(''); el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => handleBudgetSelection(parseInt(b.dataset.budgetAmount)))); }
+        function renderEcurieSelection() { const el = document.getElementById('ecurie-selection'); if (!el) return; el.innerHTML = '<h2>Select Your Team</h2>' + currentEcuries.map(e => { const c = budget >= e.cost; return `<div class="card ${!c ? 'disabled' : ''}"><h3>${e.name}</h3><ul><li>Cost: $${formatNumber(e.cost)}</li></ul><button data-ecurie-id="${e.id}" ${!c ? 'disabled' : ''}>${c ? 'Select Team' : 'Insufficient Funds'}</button></div>`; }).join(''); el.querySelectorAll('button:not(:disabled)').forEach(b => b.addEventListener('click', () => handleEcurieSelection(parseInt(b.dataset.ecurieId)))); }
+        function renderDriversList(containerId, isInitialSelection = false) { const el = document.getElementById(containerId); if (!el) return; const twoSel = selectedDriverIds.length === 2; const iTeamMap = {}; if (isInitialSelection) { EcuriesData.forEach(t => { t.defaultDriverIds.forEach(dId => { iTeamMap[dId] = t.name; }); }); } el.innerHTML = currentDrivers.map(d => { const isSel = selectedDriverIds.includes(d.id); const oName = (!isSel && isInitialSelection && iTeamMap[d.id]) ? ` (${iTeamMap[d.id]})` : ''; const cTeam = getTeamById(d.teamId); const cName = (!isInitialSelection && cTeam) ? ` (${cTeam.id === selectedEcurieId ? 'Your Team' : cTeam.name})` : ''; const isDis = isInitialSelection && !isSel && twoSel; const cAff = budget >= d.cost || isSel; const cCls = ['card', (isInitialSelection && (!cAff || isDis)) ? 'disabled' : '', isSel ? 'player-team' : '', (!isInitialSelection && cTeam && cTeam.id === selectedEcurieId) ? 'selected-driver' : ''].filter(Boolean).join(' '); return `<div class="${cCls}"><h3>${d.name}${oName}${cName}</h3><ul><li>Skill: ${d.skill}</li><li>Quali: ${d.qualyPace}</li><li>Race: ${d.racePace}</li><li>Cons: ${d.consistency}</li><li>Ovr: ${d.overtaking}</li><li>Def: ${d.defending}</li><li>Cost: $${formatNumber(d.cost)}</li></ul>${isInitialSelection ? `<button data-driver-id="${d.id}" ${isDis || !cAff ? 'disabled' : ''}>${isSel ? 'Deselect' : (twoSel ? 'Team Full' : (!cAff ? 'Cannot Afford' : 'Select Driver'))}</button>` : ''}</div>`; }).join(''); if (isInitialSelection) { el.querySelectorAll('button:not(:disabled)').forEach(b => b.addEventListener('click', () => handleDriverSelection(parseInt(b.dataset.driverId)))); } }
+        function renderCarsAndDevelopment() { const scd = document.getElementById('selected-car-display'); const ocl = document.getElementById('opponent-cars-list'); const carNameEl = document.getElementById('car-name-placeholder'); const carYearEl = document.getElementById('car-year-placeholder'); const carChartDiv = document.getElementById('car-stats-chart'); if (scd && selectedCar) { if(carNameEl) carNameEl.textContent = selectedCar.name; if(carYearEl) carYearEl.textContent = currentSeasonYear; renderCarStatBars(selectedCar); } else if (scd) { if(carNameEl) carNameEl.textContent = 'N/A'; if(carYearEl) carYearEl.textContent = 'N/A'; if(carChartDiv) carChartDiv.innerHTML = '<p style="text-align:center; color: #aaa;">No car selected.</p>'; } renderCarUpgradeOptions(); if (ocl) renderOpponentCars(ocl); }
+        function renderCarStatBars(car) { const chartDiv = document.getElementById('car-stats-chart'); if (!chartDiv) return; const maxStatValue = 120; const stats = [ { name: 'Speed', value: car.speed, className: 'speed' }, { name: 'Handling', value: car.handling, className: 'handling' }, { name: 'Reliability', value: car.reliability, className: 'reliability' }, ]; let chartHtml = ''; stats.forEach(stat => { const percentage = Math.max(0, Math.min(100, (stat.value / maxStatValue) * 100)); chartHtml += ` <div class="bar-chart-item"> <span class="bar-label">${stat.name}:</span> <div class="bar-container"> <div class="bar ${stat.className}" style="width: ${percentage}%;"> <span class="bar-value-inside">${stat.value}</span> </div> </div> </div> `; }); chartDiv.innerHTML = chartHtml; }
+        function renderCarUpgradeOptions() { const uo = document.getElementById('car-upgrade-options'); if (!uo) return; if (selectedCar === null) { uo.innerHTML = '<p>Select team/drivers first.</p>'; return; } uo.innerHTML = UpgradesData.map(u => { const ip = purchasedUpgrades[u.id]; const ca = budget >= u.cost; const id = ip || !ca; return `<div class="card ${id ? 'disabled' : ''}"><h3>${u.name}</h3><ul><li>Cost: $${formatNumber(u.cost)}</li><li>Effect: +${u.effect.value} ${u.effect.stat}</li></ul><button data-upgrade-id="${u.id}" ${id ? 'disabled' : ''}>${ip ? 'Purchased' : (ca ? 'Purchase' : 'Insufficient Funds')}</button></div>`; }).join(''); uo.querySelectorAll('button:not(:disabled)').forEach(b => b.addEventListener('click', () => handleCarUpgrade(parseInt(b.dataset.upgradeId)))); }
+        function renderOpponentCars(div) { div.innerHTML = currentEcuries.filter(e => e.id !== selectedEcurieId).map(ec => { const oc = getCarById(ec.defaultCarId); if (oc) { const ui = lastAIRaceUpgrades[oc.id]; const cab = aiTeamBudgets[ec.id] || 0; const ss = (s) => `${oc[s]} ${ui && ui.stat === s ? `<span class="stat-increase">(+${ui.change})</span>` : ''}`; return `<div class="card disabled"><h3>${ec.name}'s ${oc.name}</h3><ul><li>Budget: $${formatNumber(cab)}</li><li>Speed: ${ss('speed')}</li><li>Handling: ${ss('handling')}</li><li>Reliability: ${ss('reliability')}</li></ul></div>`; } return ''; }).join(''); }
+        function renderSeasonStandings() { const sl = document.getElementById('season-standings-list'); const si = document.getElementById('season-info'); const chartCanvas = document.getElementById('standings-line-chart-canvas'); const chartPlaceholder = document.getElementById('standings-chart-placeholder'); if (!sl || !si || !chartCanvas || !chartPlaceholder) return; sl.innerHTML = ''; let sst = `${currentSeasonYear} Season`; if (currentRaceIndex === 0 && gameState !== 'DRIVER_MARKET') sst += ' - Pre-Season'; else if (gameState === 'SEASON_END' || (gameState === 'DRIVER_MARKET' && currentRaceIndex === 0)) sst += ' - Final Standings'; else sst += ` - After Race ${currentRaceIndex} / ${totalRacesInSeason}`; si.textContent = sst; const dsa = Object.entries(driverSeasonScores).map(([dId, p]) => ({ driver: getDriverById(dId), points: p || 0 })).filter(i => i.driver).sort((a, b) => b.points - a.points || a.driver.name.localeCompare(b.driver.name)); renderStandingsLineChart(dsa, chartCanvas, chartPlaceholder); let listHtml = ''; dsa.forEach((i, idx) => { const pos = idx + 1; const ipd = selectedDriverIds.includes(i.driver.id); const t = getTeamById(i.driver.teamId); const tnd = t ? ` (${t.name})` : ''; listHtml += `<li class="${ipd ? 'player-team' : ''}"><span class="position-number">${pos}.</span><span>${i.driver.name}${tnd}</span><span>${i.points} Pts</span></li>`; }); sl.innerHTML = listHtml; }
+        function renderStandingsLineChart(sortedScores, canvasElement, placeholderElement) { if (!Chart) { console.error("Chart.js not loaded!"); placeholderElement.textContent = 'Error loading chart library.'; placeholderElement.style.display = 'block'; canvasElement.style.display = 'none'; return; } if (currentRaceIndex === 0 && gameState !== 'DRIVER_MARKET' && gameState !== 'SEASON_END') { placeholderElement.textContent = 'Complete the first race to see the chart.'; placeholderElement.style.display = 'block'; canvasElement.style.display = 'none'; if (standingsChartInstance) { standingsChartInstance.destroy(); standingsChartInstance = null; } return; } placeholderElement.style.display = 'none'; canvasElement.style.display = 'block'; if (standingsChartInstance) { standingsChartInstance.destroy(); } const ctx = canvasElement.getContext('2d'); const raceCountForLabels = Math.max(1, currentRaceIndex); const labels = Array.from({ length: raceCountForLabels }, (_, i) => `R${i + 1}`); const datasets = sortedScores.slice(0, 10).map((item, index) => { const driverId = item.driver.id; const history = driverRaceHistory[driverId] || []; const color = generateChartColors(index); const dataPoints = labels.map((_, raceIdx) => history[raceIdx] ?? (raceIdx === 0 ? 0 : null)); return { label: item.driver.name, data: dataPoints, borderColor: color, backgroundColor: color + '80', tension: 0.1, fill: false, pointRadius: 3, pointHoverRadius: 5, borderWidth: 2, }; }); standingsChartInstance = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#e0e0e0', boxWidth: 15, padding: 15 } }, tooltip: { mode: 'index', intersect: false, backgroundColor: 'rgba(0,0,0,0.8)', titleColor: '#ff8700', bodyColor: '#ffffff', }, title: { display: false } }, scales: { x: { title: { display: true, text: 'Race Number', color: '#ccc' }, ticks: { color: '#ccc' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } }, y: { title: { display: true, text: 'Total Points', color: '#ccc' }, beginAtZero: true, ticks: { color: '#ccc' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } } } } }); }
+        function generateChartColors(index) { const colors = [ '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#83AFA7', '#EF5350', '#AB47BC', '#42A5F5', '#66BB6A', '#FFA726', '#78909C', '#EC407A', '#5C6BC0', '#26A69A', '#FFCA28', '#8D6E63', '#BDBDBD' ]; return colors[index % colors.length]; }
+        function renderCalendar() { const cl = document.getElementById('calendar-list'); const ci = document.getElementById('calendar-info'); if (!cl || !ci) return; ci.textContent = `${currentSeasonYear} Race Schedule: ${currentRaceIndex}/${totalRacesInSeason} completed.`; cl.innerHTML = currentSeasonCalendar.map((r, i) => { const isc = i < currentRaceIndex; const isn = i === currentRaceIndex; const lic = `${isc ? 'completed' : ''} ${isn ? 'next-race' : ''}`.trim(); return `<li class="${lic}"><span class="race-name">${i + 1}. ${r.name}</span><ul class="race-details"><li>Track Type: ${getTrackType(r)}</li><li>Key Stats: Spd ${r.speed} / Hnd ${r.handling} / Rel ${r.reliability}</li></ul></li>`; }).join(''); }
+        function getTrackType(r) { if (r.speed > 95) return "High Speed"; if (r.handling > 95) return "High Handling"; if (r.speed > 90 && r.handling < 80) return "Speed Focused"; if (r.handling > 90 && r.speed < 80) return "Handling Focused"; if (r.speed > 85 && r.handling > 85) return "Balanced"; return "Mixed"; }
+        function renderQualifyingResults(stage, results) { const listEl = document.querySelector(`#${stage}-results ol`); if (!listEl) return; listEl.innerHTML = results.map((r, i) => { const t = getTeamById(r.driver.teamId); const tns = t ? ` (${t.name.substring(0, 3).toUpperCase()})` : ''; const ts = r.time.toFixed(3); const ip = selectedDriverIds.includes(r.driver.id); return `<li class="${ip ? 'player-driver' : ''}">${i + 1}. ${r.driver.name}${tns} - ${ts}</li>`; }).join(''); if (stage === 'q1' || stage === 'q2') { const co = (stage === 'q1') ? 15 : 10; listEl.querySelectorAll('li').forEach((li, i) => { if (i >= co) li.style.opacity = '0.6'; }); } }
+        function renderStartingGrid() { const gridEl = document.querySelector('#starting-grid ol'); if (!gridEl) return; gridEl.innerHTML = startingGrid.map((p, i) => { const t = getTeamById(p.driver.teamId); const tns = t ? ` (${t.name.substring(0, 3).toUpperCase()})` : ''; const ip = selectedDriverIds.includes(p.driver.id); return `<li class="${ip ? 'player-driver' : ''}">${i + 1}. ${p.driver.name}${tns}</li>`; }).join(''); }
+        function clearQualifyingUI() { document.querySelector('#q1-results ol').innerHTML = ''; document.querySelector('#q2-results ol').innerHTML = ''; document.querySelector('#q3-results ol').innerHTML = ''; document.querySelector('#starting-grid ol').innerHTML = ''; }
+        function renderLiveLeaderboard() { const lbEl = document.querySelector('#live-leaderboard ol'); const lcEl = document.getElementById('live-lap-counter'); if (!lbEl || !lcEl) return; lcEl.textContent = `Lap: ${currentLap} / ${CONCEPTUAL_LAPS}`; lbEl.innerHTML = raceLeaderboard.map((e, i) => { const t = getTeamById(e.driver.teamId); const tns = t ? ` (${t.name.substring(0, 3).toUpperCase()})` : ''; const ip = selectedDriverIds.includes(e.driver.id); let st = e.status === 'DNF' ? ' <span class="status-dnf">(DNF)</span>' : ''; return `<li class="${ip ? 'player-driver' : ''}"><span>${i + 1}. ${e.driver.name}${tns}${st}</span></li>`; }).join(''); }
+        function renderFinalRaceResults(finalLeaderboard, raceName, totalPrizeMoney) { const resEl = document.getElementById('race-results'), listEl = resEl?.querySelector('ol'), msgEl = resEl?.querySelector('#race-message'), prizeLEl = resEl?.querySelector('#prize-money-earned ul'), prizeTEl = resEl?.querySelector('#prize-money-earned p'); if (!resEl || !listEl || !msgEl || !prizeLEl || !prizeTEl) return; listEl.innerHTML = ''; resEl.querySelector('h3').textContent = `Final Results: ${raceName} (${currentSeasonYear})`; listEl.innerHTML = finalLeaderboard.map((r, i) => { const ipd = selectedDriverIds.includes(r.driver.id); const t = getTeamById(r.driver.teamId); const tns = t ? ` (${t.name.substring(0, 3).toUpperCase()})` : ''; let rt = `${r.driver.name}${tns}`; let pt = ''; if (r.status === 'Finished' && i < PointsSystem.length) pt = ` (+${PointsSystem[i]} pts)`; else if (r.status === 'DNF') rt += ' <span class="status-dnf">(DNF)</span>'; return `<li class="${ipd ? 'player-driver' : ''}">${rt}${pt}</li>`; }).join(''); msgEl.textContent = `Race finished. Points awarded to top finishers.`; let ph = ''; const fin = finalLeaderboard.filter(r => r.status === 'Finished'); fin.forEach((r, i) => { if (selectedDriverIds.includes(r.driver.id)) { const p = i + 1; const mp = (i < PointsSystem.length) ? PointsSystem[i] * PrizeMoneyPerPoint : 0; const mb = (i < 3) ? PrizeMoneyTop3Bonus : 0; if (mp > 0 || mb > 0) { let bt = `$${formatNumber(mp)} (Pts)`; if (mb > 0) bt += ` + $${formatNumber(mb)} (Top 3)`; ph += `<li>${r.driver.name} (${getOrdinalSuffix(p)}): ${bt}</li>`; } } }); prizeLEl.innerHTML = ph || '<li>No prize money earned this race.</li>'; prizeTEl.textContent = `Total Earned: $${formatNumber(totalPrizeMoney)}`; resEl.style.display = 'block'; document.getElementById('final-results-placeholder').style.display = 'none'; }
+        function renderNotifications() { const listEl = document.getElementById('notifications-list'); if (!listEl) return; if (notificationsLog.length === 0) { listEl.innerHTML = '<li class="placeholder">No notifications yet.</li>'; return; } listEl.innerHTML = notificationsLog.map(note => { let typeClass = ''; if (note.type === 'upgrade') typeClass = 'event-type-upgrade'; else if (note.type === 'transfer') typeClass = 'event-type-transfer'; else if (note.type === 'stats') typeClass = 'event-type-stats'; return `<li><span class="timestamp">[${note.timestamp}]</span> <span class="event-type ${typeClass}">${note.type.toUpperCase()}:</span> ${note.message}</li>`; }).join(''); }
+        function renderAllTabs() { renderCarsAndDevelopment(); renderDriversList('drivers-list-management', false); renderSeasonStandings(); renderCalendar(); renderNotifications(); }
+        function updateRaceHQButtonState() { const qb = document.getElementById('run-qualifying-button'), srb = document.getElementById('start-race-button'), acb = document.getElementById('accelerate-race-button'), ngb = document.getElementById('next-gp-button'), nsb = document.getElementById('next-season-button'); qb.style.display = 'none'; srb.style.display = 'none'; acb.style.display = 'none'; ngb.style.display = 'none'; nsb.style.display = 'none'; if (gameState === 'SEASON_END') { nsb.style.display = 'inline-block'; nsb.disabled = false; if (!nsb.getAttribute('data-season-end-message-shown')) { showMessage(`Season ${currentSeasonYear} Complete! Start next season.`, 'success', 10000); nsb.setAttribute('data-season-end-message-shown', 'true'); } } else if (gameState === 'MANAGEMENT' && currentRaceIndex >= totalRacesInSeason) { gameState = 'SEASON_END'; updateRaceHQButtonState(); } else if (gameState === 'MANAGEMENT' && raceCompletedForCurrentIndex) { ngb.style.display = 'inline-block'; ngb.disabled = false; nsb.removeAttribute('data-season-end-message-shown'); } else if (gameState === 'MANAGEMENT' && startingGrid.length > 0 && !raceCompletedForCurrentIndex) { srb.style.display = 'inline-block'; srb.disabled = false; acb.style.display = 'inline-block'; acb.disabled = false; nsb.removeAttribute('data-season-end-message-shown'); } else if (gameState === 'MANAGEMENT' && startingGrid.length === 0) { qb.style.display = 'inline-block'; qb.disabled = false; qb.textContent = `Run Qualifying: ${currentSeasonCalendar[currentRaceIndex]?.name || 'Next Race'}`; nsb.removeAttribute('data-season-end-message-shown'); } }
+
+        // --- Qualifying & Race Logic ---
+        function runQualifyingStage(participants, numToAdvance, stageName) { const cr = currentSeasonCalendar[currentRaceIndex]; let res = participants.map(p => ({ driver: p.driver, car: p.car, time: calculateQualifyingPerformance(p.driver, p.car, cr) })); res.sort((a, b) => a.time - b.time); qualifyingResults[stageName] = res.map(r => ({...r})); renderQualifyingResults(stageName, res); return res.slice(0, numToAdvance); }
+        function determineStartingGrid() { startingGrid = []; startingGrid = qualifyingResults.q3.map(r => ({ driver: r.driver, car: r.car })); const q2F = qualifyingResults.q2.filter(q2r => !startingGrid.some(sgr => sgr.driver.id === q2r.driver.id)); startingGrid = startingGrid.concat(q2F.map(r => ({ driver: r.driver, car: r.car }))); const q1F = qualifyingResults.q1.filter(q1r => !startingGrid.some(sgr => sgr.driver.id === q1r.driver.id)); startingGrid = startingGrid.concat(q1F.map(r => ({ driver: r.driver, car: r.car }))); console.log("Grid:", startingGrid.map((p, i) => `${i+1}.${p.driver.name}`).join(', ')); }
+        function handleRunQualifyingSequence() { const currentRace = currentSeasonCalendar[currentRaceIndex]; if (!currentRace) return; showMessage(`Running Qualifying for ${currentRace.name}...`, 'info', 3000); document.getElementById('run-qualifying-button').disabled = true; clearQualifyingUI(); const participants = currentDrivers.filter(d => d.teamId !== null).map(drv => ({ driver: drv, car: getCarById(getTeamById(drv.teamId)?.defaultCarId) })).filter(p => p.car); if (participants.length < 2) { showMessage("Not enough participants.", "error"); document.getElementById('run-qualifying-button').disabled = false; return; } document.getElementById('qualifying-title').textContent = `Qualifying: ${currentRace.name}`; setTimeout(() => { const q1A = runQualifyingStage(participants, 15, 'q1'); showMessage('Q1 Complete. Running Q2...', 'info', 1500); setTimeout(() => { const q2A = runQualifyingStage(q1A, 10, 'q2'); showMessage('Q2 Complete. Running Q3...', 'info', 1500); setTimeout(() => { runQualifyingStage(q2A, 10, 'q3'); showMessage('Qualifying Complete!', 'success', 2000); determineStartingGrid(); renderStartingGrid(); raceCompletedForCurrentIndex = false; updateRaceHQButtonState(); activateRaceSubTab('qualifying'); }, 1000); }, 1000); }, 500); }
+        function startRaceSimulation() { if (startingGrid.length === 0) { showMessage("Run qualifying first.", "error"); return; } const currentRace = currentSeasonCalendar[currentRaceIndex]; maxDnfThisRace = Math.floor(Math.random() * 3); console.log(`Maximum DNFs for this race set to: ${maxDnfThisRace}`); showMessage(`Starting Race: ${currentRace.name}! (Max ${maxDnfThisRace} DNF(s))`, 'info', 3000); document.getElementById('start-race-button').disabled = true; document.getElementById('accelerate-race-button').disabled = true; document.getElementById('live-race-area').style.display = 'block'; document.getElementById('live-race-placeholder').style.display = 'none'; document.getElementById('race-final-subtab-content').classList.remove('active'); currentLap = 0; dnfCountThisRace = 0; raceLeaderboard = startingGrid.map(p => ({ driver: p.driver, car: p.car, status: 'Racing', progress: 0, segmentProgress: 0 })); renderLiveLeaderboard(); let segSim = 0; if (raceIntervalId) clearInterval(raceIntervalId); raceIntervalId = setInterval(() => { if (segSim >= TOTAL_RACE_SEGMENTS || raceLeaderboard.every(p => p.status !== 'Racing')) { endRaceSimulation(); return; } runRaceSegment(); segSim++; currentLap = Math.min(CONCEPTUAL_LAPS, Math.floor((segSim / TOTAL_RACE_SEGMENTS) * CONCEPTUAL_LAPS)); renderLiveLeaderboard(); }, RACE_UPDATE_INTERVAL_MS); activateRaceSubTab('live'); }
+        function runRaceSegment() { const track = currentSeasonCalendar[currentRaceIndex]; raceLeaderboard.forEach(e => { if (e.status === 'Racing') { if (checkReliability(e.driver, e.car, track)) { e.status = 'DNF'; e.segmentProgress = -1; dnfCountThisRace++; console.log(`${e.driver.name} DNF! (Car: ${e.car.reliability}) DNF Count: ${dnfCountThisRace}/${maxDnfThisRace}`); } else { e.segmentProgress = calculateRaceSegmentPerformance(e.driver, e.car, track); e.progress += e.segmentProgress; } } else { e.segmentProgress = 0; } }); for (let i = raceLeaderboard.length - 2; i >= 0; i--) { const atkE = raceLeaderboard[i + 1], defE = raceLeaderboard[i]; if (atkE.status === 'Racing' && defE.status === 'Racing' && atkE.segmentProgress > defE.segmentProgress) { if (defE.progress - atkE.progress < PROGRESS_PER_SEGMENT_BASE * 0.75) { if (attemptOvertake(atkE, defE, track)) { [raceLeaderboard[i], raceLeaderboard[i + 1]] = [raceLeaderboard[i + 1], raceLeaderboard[i]]; } } } } raceLeaderboard.sort((a, b) => { const so = { 'Racing': 1, 'Finished': 2, 'DNF': 3 }; if (so[a.status] !== so[b.status]) return so[a.status] - so[b.status]; return b.progress - a.progress; }); }
+        function endRaceSimulationPostProcessing() {
+            const raceIdx = currentRaceIndex; const raceName = currentSeasonCalendar[raceIdx]?.name || "Unknown Race";
+            showMessage(`Race Finished: ${raceName}!`, 'success', 3000); raceLeaderboard.forEach(e => { if (e.status === 'Racing') e.status = 'Finished'; }); raceLeaderboard.sort((a, b) => { const so = { 'Finished': 1, 'DNF': 2 }; if (a.status !== b.status) return so[a.status] - so[b.status]; return b.progress - a.progress; }); console.log("Final Leaderboard:", raceLeaderboard.map(e => `${e.driver.name}(${e.status}-${e.progress.toFixed(0)})`).join(','));
+            let pMoneyPlayer = 0; const finishers = raceLeaderboard.filter(r => r.status === 'Finished');
+            finishers.forEach((r, i) => { const dtId = r.driver.teamId; let mP = 0, mB = 0; if (i < PointsSystem.length) { const pts = PointsSystem[i]; driverSeasonScores[r.driver.id] = (driverSeasonScores[r.driver.id] || 0) + pts; if (!driverRaceHistory[r.driver.id]) { driverRaceHistory[r.driver.id] = Array(totalRacesInSeason).fill(0); } driverRaceHistory[r.driver.id][raceIdx] = driverSeasonScores[r.driver.id]; mP = pts * PrizeMoneyPerPoint; } if (i < 3) mB = PrizeMoneyTop3Bonus; const tm = mP + mB; if (tm > 0) { if (dtId === selectedEcurieId) { pMoneyPlayer += tm; } else if (aiTeamBudgets.hasOwnProperty(dtId)) { aiTeamBudgets[dtId] = (aiTeamBudgets[dtId] || 0) + tm; console.log(`AI Team ${getTeamById(dtId)?.name} earned $${formatNumber(tm)}. New Budget: $${formatNumber(aiTeamBudgets[dtId])}`); } } });
+            Object.keys(driverSeasonScores).forEach(driverIdStr => { const driverId = parseInt(driverIdStr); if (!driverRaceHistory[driverId]) { driverRaceHistory[driverId] = Array(totalRacesInSeason).fill(0); } if (driverRaceHistory[driverId][raceIdx] === undefined || (driverRaceHistory[driverId][raceIdx] === 0 && driverSeasonScores[driverId] === 0) ) { driverRaceHistory[driverId][raceIdx] = raceIdx > 0 ? (driverRaceHistory[driverId][raceIdx - 1] || 0) : 0; }});
+            budget += pMoneyPlayer; document.getElementById('budget-display').textContent = `Budget: $${formatNumber(budget)}`; runAIUpgradePhase(); generateAIUpgradeNotifications(); raceCompletedForCurrentIndex = true; document.getElementById('race-results-title').textContent = `Race Results: ${raceName}`; renderFinalRaceResults(raceLeaderboard, raceName, pMoneyPlayer); renderAllTabs(); updateRaceHQButtonState(); document.getElementById('live-race-area').style.display = 'none'; document.getElementById('live-race-placeholder').style.display = 'block'; activateRaceSubTab('final');
+        }
+        function endRaceSimulation() { if (raceIntervalId) { clearInterval(raceIntervalId); raceIntervalId = null; } endRaceSimulationPostProcessing(); }
+        function handleAccelerateRace() { if (startingGrid.length === 0) { showMessage("Run qualifying first.", "error"); return; } if (raceIntervalId) { clearInterval(raceIntervalId); raceIntervalId = null; } const currentRace = currentSeasonCalendar[currentRaceIndex]; showMessage(`Accelerating Race: ${currentRace.name}...`, 'info', 1500); document.getElementById('start-race-button').disabled = true; document.getElementById('accelerate-race-button').disabled = true; document.getElementById('live-race-area').style.display = 'none'; maxDnfThisRace = Math.floor(Math.random() * 3); console.log(`Maximum DNFs for this race set to: ${maxDnfThisRace}`); dnfCountThisRace = 0; raceLeaderboard = startingGrid.map(p => ({ driver: p.driver, car: p.car, status: 'Racing', progress: 0, segmentProgress: 0 })); console.log("Accelerating race segments..."); for (let segSim = 0; segSim < TOTAL_RACE_SEGMENTS; segSim++) { runRaceSegment(); } console.log("Acceleration complete."); endRaceSimulationPostProcessing(); }
+        function runAIUpgradePhase() { console.log("--- AI Upgrade Phase ---"); lastAIRaceUpgrades = {}; currentEcuries.forEach(team => { if (team.id !== selectedEcurieId && aiTeamBudgets.hasOwnProperty(team.id)) { const tid = team.id; const bAI = aiTeamBudgets[tid]; const uAI = aiTeamUpgrades[tid] || {}; const cAI = getCarById(team.defaultCarId); if (!cAI || bAI <= 0) return; const aff = UpgradesData.filter(u => !uAI[u.id] && u.cost <= bAI).sort((a, b) => b.cost - a.cost); if (aff.length > 0) { const upg = aff[0]; aiTeamBudgets[tid] -= upg.cost; uAI[upg.id] = true; aiTeamUpgrades[tid] = uAI; const st = upg.effect.stat; const cur = cAI[st]; const nV = Math.min(maxStatValueAI, cur + upg.effect.value); const ac = nV - cur; if (ac > 0) { cAI[st] = nV; lastAIRaceUpgrades[cAI.id] = { stat: st, change: ac }; } else console.log(`AI ${team.name} tried ${upg.name}, stat maxed. Budget: $${formatNumber(aiTeamBudgets[tid])}`); } } }); console.log("--- End AI Upgrade Phase ---"); }
+        function generateAIUpgradeNotifications() { Object.entries(lastAIRaceUpgrades).forEach(([carId, upgradeInfo]) => { const car = currentCars.find(c => c.id === parseInt(carId)); const team = currentEcuries.find(t => t.defaultCarId === car?.id); if (team && car) { addNotification(`${team.name}'s ${car.name} improved ${upgradeInfo.stat} (+${upgradeInfo.change})`, 'upgrade'); } }); }
+        function handleNextRaceWeekend() { if (currentRaceIndex >= totalRacesInSeason - 1) { gameState = 'SEASON_END'; updateRaceHQButtonState(); return; } currentRaceIndex++; startingGrid = []; qualifyingResults = { q1: [], q2: [], q3: [] }; raceCompletedForCurrentIndex = false; dnfCountThisRace = 0; maxDnfThisRace = 0; document.getElementById('live-race-area').style.display = 'none'; document.getElementById('live-race-placeholder').style.display = 'block'; document.getElementById('race-results').style.display = 'none'; document.getElementById('final-results-placeholder').style.display = 'block'; clearQualifyingUI(); showMessage(`Ready for ${currentSeasonCalendar[currentRaceIndex].name}`, 'info'); updateRaceHQButtonState(); renderCalendar(); activateRaceSubTab('qualifying'); }
+
+        // --- Post-Season Driver Market ---
+        function renderDriverMarket() {
+            const marketListDiv = document.getElementById('driver-market-list'); if (!marketListDiv) return; document.getElementById('market-season-year').textContent = currentSeasonYear; const baseDrivers = DriversData;
+            marketListDiv.innerHTML = currentDrivers.sort((a,b) => b.skill - a.skill).map(driver => {
+                const isCurrentPlayerDriver = selectedDriverIds.includes(driver.id); const isSelectedInMarket = marketSelectedDriverIds.includes(driver.id); const canAfford = budget >= driver.cost || isSelectedInMarket; const slotsFull = marketSelectedDriverIds.length >= 2; let buttonText = 'Select Driver'; let buttonDisabled = false; let cardClass = 'card';
+                if (isSelectedInMarket) { buttonText = 'Deselect'; cardClass += ' market-selected'; } else if (slotsFull) { buttonText = 'Team Full'; buttonDisabled = true; } else if (!canAfford) { buttonText = 'Cannot Afford'; buttonDisabled = true; }
+                if (isCurrentPlayerDriver) { cardClass += ' market-current-player'; } if (buttonDisabled && !isSelectedInMarket) { cardClass += ' disabled'; }
+                 let statChangesHtml = {}; const baseDriver = baseDrivers.find(bd => bd.id === driver.id); const statsToShow = ['qualyPace', 'racePace', 'consistency', 'overtaking', 'defending']; if (baseDriver) { statChangesHtml = statsToShow.map(stat => { const diff = driver[stat] - baseDriver[stat]; if (diff === 0) return {stat: stat, html: ''}; const sign = diff > 0 ? '+' : ''; const changeClass = diff > 0 ? 'positive' : 'negative'; return { stat: stat, html: `<span class="stat-change ${changeClass}" title="vs Base">(${sign}${diff})</span>`}; }).reduce((acc, curr) => { acc[curr.stat] = curr.html; return acc; }, {}); }
+                 const getChange = (statName) => statChangesHtml[statName] || '';
+                return ` <div class="${cardClass}"> <h3>${driver.name}</h3> <ul> <li>Cost: $${formatNumber(driver.cost)}</li> <li>Quali: ${driver.qualyPace} ${getChange('qualyPace')}</li> <li>Race: ${driver.racePace} ${getChange('racePace')}</li> <li>Cons: ${driver.consistency} ${getChange('consistency')}</li> <li>Ovr: ${driver.overtaking} ${getChange('overtaking')}</li> <li>Def: ${driver.defending} ${getChange('defending')}</li> </ul> <button data-driver-id="${driver.id}" ${buttonDisabled ? 'disabled' : ''}> ${buttonText} </button> </div>`;
+            }).join('');
+            marketListDiv.querySelectorAll('button').forEach(button => { if (!button.disabled) { button.addEventListener('click', () => handleDriverMarketSelection(parseInt(button.dataset.driverId))); } }); document.getElementById('confirm-drivers-button').disabled = marketSelectedDriverIds.length !== 2;
+        }
+        function handleDriverMarketSelection(driverId) { const driver = getDriverById(driverId); if (!driver) return; const isSelected = marketSelectedDriverIds.includes(driverId); if (isSelected) { marketSelectedDriverIds = marketSelectedDriverIds.filter(id => id !== driverId); budget += driver.cost; showMessage(`${driver.name} deselected. +$${formatNumber(driver.cost)}`, 'info'); } else { if (marketSelectedDriverIds.length >= 2) { showMessage("Deselect a driver first (Max 2).", 'error'); return; } if (budget < driver.cost) { showMessage(`Insufficient funds for ${driver.name}. Need $${formatNumber(driver.cost)}`, 'error'); return; } marketSelectedDriverIds.push(driverId); budget -= driver.cost; showMessage(`${driver.name} selected! -$${formatNumber(driver.cost)}`, 'success'); } document.getElementById('budget-display').textContent = `Budget: $${formatNumber(budget)}`; renderDriverMarket(); }
+        function assignAIDrivers() { console.log("--- Assigning AI Drivers ---"); currentEcuries.forEach(team => { if (team.id !== selectedEcurieId) team.driverIds = []; }); currentDrivers.forEach(driver => { if (!selectedDriverIds.includes(driver.id)) driver.teamId = null; }); const availableDrivers = currentDrivers.filter(d => !selectedDriverIds.includes(d.id)); const aiTeams = currentEcuries.filter(t => t.id !== selectedEcurieId); availableDrivers.sort((a, b) => b.skill - a.skill); aiTeams.forEach(team => { while (team.driverIds.length < 2 && availableDrivers.length > 0) { const driverToAssign = availableDrivers.shift(); if (driverToAssign) { driverToAssign.teamId = team.id; team.driverIds.push(driverToAssign.id); } } }); currentDrivers.forEach(driver => { if (!driver.teamId) console.error(`ERROR: Driver ${driver.name} still unassigned after AI fill!`); }); currentEcuries.forEach(team => { if (team.driverIds.length !== 2) console.error(`ERROR: Team ${team.name} has ${team.driverIds.length} drivers after AI fill!`); }); console.log("--- End Assigning AI Drivers ---"); }
+        function generateDriverChangeNotifications(oldPlayerDrivers, oldAIDrivers) {
+             const droppedDrivers = oldPlayerDrivers.filter(id => !selectedDriverIds.includes(id)); const newDrivers = selectedDriverIds.filter(id => !oldPlayerDrivers.includes(id));
+             droppedDrivers.forEach(id => { const driver = getDriverById(id); if(driver) addNotification(`You released ${driver.name}.`, 'transfer'); });
+             newDrivers.forEach(id => { const driver = getDriverById(id); if(driver) addNotification(`You signed ${driver.name}!`, 'transfer'); });
+             if (droppedDrivers.length === 0 && newDrivers.length === 0) { addNotification(`You kept the same driver lineup.`, 'transfer'); }
+             addNotification(`--- AI Team Driver Updates for ${currentSeasonYear} ---`, 'transfer');
+             currentEcuries.forEach(team => { if (team.id !== selectedEcurieId) { const driverNames = team.driverIds.map(id => getDriverById(id)?.name || 'Unknown').join(' & '); addNotification(`${team.name}: ${driverNames}`, 'transfer'); } });
+        }
+        function handleConfirmDriverSelection() { if (marketSelectedDriverIds.length !== 2) { showMessage("You must select exactly two drivers.", "error"); return; } const previousPlayerDrivers = [...selectedDriverIds]; const previousAIDrivers = {}; currentEcuries.forEach(t => { if(t.id !== selectedEcurieId) previousAIDrivers[t.id] = [...t.driverIds]; }); console.log("Confirming drivers:", marketSelectedDriverIds.map(id => getDriverById(id)?.name)); selectedDriverIds = [...marketSelectedDriverIds]; const playerTeam = getTeamById(selectedEcurieId); if (playerTeam) playerTeam.driverIds = selectedDriverIds; selectedDriverIds.forEach(id => { const driver = getDriverById(id); if (driver) driver.teamId = selectedEcurieId; }); assignAIDrivers(); generateDriverChangeNotifications(previousPlayerDrivers, previousAIDrivers); gameState = 'MANAGEMENT'; document.getElementById('driver-market-screen').style.display = 'none'; document.getElementById('team-management-screen').style.display = 'block'; resetSeasonState(true); showMessage(`Team confirmed for ${currentSeasonYear} season! Check Notifications.`, 'success'); updateRaceHQButtonState(); renderAllTabs(); activateTab('development'); activateRaceSubTab('qualifying'); }
+
+        // --- Season Logic ---
+        function handleStartNextSeason() {
+            console.log(`Ending Season ${currentSeasonYear}.`);
+            if(raceIntervalId) clearInterval(raceIntervalId); raceIntervalId = null;
+            gameState = 'SEASON_END';
+            let playerPoints = selectedDriverIds.reduce((sum, id) => driverSeasonScores[id] ? sum + driverSeasonScores[id] : sum, 0);
+            budget = baseBudgetNextSeason + (playerPoints * playerBonusPerPoint);
+            // Calculate AI budgets based on *their* previous season points
+            Object.keys(aiTeamBudgets).forEach(teamIdStr => { const teamId = parseInt(teamIdStr); const team = getTeamById(teamId); if (team) { let teamPoints = team.driverIds.reduce((sum, driverId) => sum + (driverSeasonScores[driverId] || 0), 0); aiTeamBudgets[teamId] = aiBaseBudgetNextSeason + (teamPoints * aiBonusPerPoint); } else { aiTeamBudgets[teamId] = aiBaseBudgetNextSeason; } });
+            document.getElementById('budget-display').textContent = `Budget: $${formatNumber(budget)}`;
+            showMessage(`End of Season ${currentSeasonYear}. Budget calculated. Entering Driver Market...`, 'info', 4000);
+            randomizeCarStats(); randomizeDriverStats(); // Add notifications inside these
+            gameState = 'DRIVER_MARKET';
+            currentSeasonYear++;
+            console.log(`Starting Driver Market for ${currentSeasonYear} Season.`);
+            document.getElementById('team-management-screen').style.display = 'none'; document.getElementById('driver-market-screen').style.display = 'block';
+            marketSelectedDriverIds = [...selectedDriverIds]; // Pre-select current drivers
+            renderDriverMarket(); updateRaceHQButtonState();
+            addNotification(`Entering Driver Market for ${currentSeasonYear} season.`, 'transfer');
+        }
+
+        // --- Season State Reset ---
+        function resetSeasonState(isNewSeasonStart = false) {
+             lastAIRaceUpgrades = {}; qualifyingResults = { q1: [], q2: [], q3: [] }; startingGrid = []; raceLeaderboard = []; if(raceIntervalId) clearInterval(raceIntervalId); raceIntervalId = null; dnfCountThisRace = 0; maxDnfThisRace = 0; raceCompletedForCurrentIndex = false;
+             if (isNewSeasonStart) { currentRaceIndex = 0; driverSeasonScores = {}; driverRaceHistory = {}; currentDrivers.forEach(d => { driverSeasonScores[d.id] = 0; driverRaceHistory[d.id] = []; }); purchasedUpgrades = {}; aiTeamUpgrades = {}; if (standingsChartInstance) { standingsChartInstance.destroy(); standingsChartInstance = null; } }
+             selectedCar = getCarById(getTeamById(selectedEcurieId)?.defaultCarId);
+        }
+
+
+        // --- Event Handlers (Setup, Upgrade) ---
+        function handleBudgetSelection(amount) { budget = amount; document.getElementById('budget-display').textContent = `Budget: $${formatNumber(budget)}`; showMessage(`Budget set to $${formatNumber(amount)}`, 'success', 2000); document.getElementById('initial-budget-selection').style.display = 'none'; document.getElementById('ecurie-selection').style.display = 'block'; renderEcurieSelection(); }
+        function handleEcurieSelection(ecurieId) { const se = getTeamById(ecurieId); if (!se || budget < se.cost) { showMessage(se ? "Insufficient funds." : "Team not found.", 'error'); return; } selectedEcurieId = ecurieId; budget -= se.cost; teamName = se.name; document.getElementById('budget-display').textContent = `Budget: $${formatNumber(budget)}`; selectedCar = getCarById(se.defaultCarId); showMessage(`${se.name} selected! Cost: $${formatNumber(se.cost)}`, 'success'); document.getElementById('ecurie-selection').style.display = 'none'; document.getElementById('initial-driver-selection').style.display = 'block'; document.getElementById('drivers-title').textContent = `Select Two Drivers for ${teamName}`; renderDriversList('drivers-list', true); }
+        function handleDriverSelection(driverId) { const dts = getDriverById(driverId); if (!dts) return; const isSel = selectedDriverIds.includes(driverId); if (isSel) { selectedDriverIds = selectedDriverIds.filter(id => id !== driverId); budget += dts.cost; showMessage(`${dts.name} deselected.`, 'info', 2000); } else { if (selectedDriverIds.length >= 2) { showMessage("Team full.", 'error'); return; } if (budget < dts.cost) { showMessage(`Insufficient funds.`, 'error'); return; } selectedDriverIds.push(driverId); budget -= dts.cost; showMessage(`${dts.name} selected!`, 'success', 2000); } document.getElementById('budget-display').textContent = `Budget: $${formatNumber(budget)}`; renderDriversList('drivers-list', true); if (selectedDriverIds.length === 2) { showMessage("Team complete! Preparing management...", 'success', 2500); setTimeout(initializeGameAfterSetup, 1500); } }
+        function handleCarUpgrade(upgradeId) { const u = UpgradesData.find(up => up.id === upgradeId); if (!u || !selectedCar) return; if (purchasedUpgrades[u.id]) { showMessage("Already purchased.", 'info'); return; } if (budget < u.cost) { showMessage("Insufficient funds.", 'error'); return; } budget -= u.cost; const s = u.effect.stat; const cs = selectedCar[s]; const nv = Math.min(maxStatValuePlayer, cs + u.effect.value); selectedCar[s] = nv; purchasedUpgrades[u.id] = true; document.getElementById('budget-display').textContent = `Budget: $${formatNumber(budget)}`; showMessage(`${u.name} purchased! +${nv - cs} ${s}.`, 'success'); renderCarsAndDevelopment(); addNotification(`Player upgraded ${u.name} (+${u.effect.value} ${s})`, 'upgrade'); }
+
+        // --- Tab Switching Logic ---
+        function setupTabs() { document.querySelectorAll('.tab-button').forEach(b => b.addEventListener('click', () => activateTab(b.dataset.tab))); }
+        function activateTab(targetTab) {
+            if (gameState === 'DRIVER_MARKET') { showMessage("Confirm your driver selection first.", "info"); return; }
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none'); const ab = document.querySelector(`.tab-button[data-tab="${targetTab}"]`), ac = document.getElementById(`${targetTab}-tab`); if (ab) ab.classList.add('active'); if (ac) ac.style.display = 'block';
+            if (targetTab === 'development') renderCarsAndDevelopment();
+            if (targetTab === 'drivers') renderDriversList('drivers-list-management', false);
+            if (targetTab === 'standings') renderSeasonStandings();
+            if (targetTab === 'calendar') renderCalendar();
+            if (targetTab === 'notifications') renderNotifications();
+            if (targetTab === 'race') { updateRaceHQButtonState(); if (!document.querySelector('#race-tab .sub-tab-button.active')) { activateRaceSubTab('qualifying'); } }
+        }
+
+        // --- Sub-Tab Logic ---
+        function setupRaceSubTabs() { document.querySelectorAll('.sub-tab-button').forEach(button => { button.addEventListener('click', () => { if(raceIntervalId && button.dataset.subtab !== 'live') { showMessage("Cannot switch tabs during live race simulation.", "info"); return; } activateRaceSubTab(button.dataset.subtab); }); }); }
+        function activateRaceSubTab(targetSubTab) { document.querySelectorAll('.sub-tab-button').forEach(btn => btn.classList.remove('active')); document.querySelectorAll('.sub-tab-content').forEach(content => content.classList.remove('active')); const activeButton = document.querySelector(`.sub-tab-button[data-subtab="${targetSubTab}"]`); const activeContent = document.getElementById(`race-${targetSubTab}-subtab-content`); if (activeButton) activeButton.classList.add('active'); if (activeContent) activeContent.classList.add('active'); const livePlaceholder = document.getElementById('live-race-placeholder'); const finalPlaceholder = document.getElementById('final-results-placeholder'); const liveAreaVisible = document.getElementById('live-race-area').style.display !== 'none' && document.getElementById('live-race-area').offsetParent !== null; const finalAreaVisible = document.getElementById('race-results').style.display !== 'none' && document.getElementById('race-results').offsetParent !== null; if(livePlaceholder) livePlaceholder.style.display = (targetSubTab === 'live' && !liveAreaVisible) ? 'block' : 'none'; if(finalPlaceholder) finalPlaceholder.style.display = (targetSubTab === 'final' && !finalAreaVisible) ? 'block' : 'none'; }
+
+
+        // --- Initialization ---
+        function initGame() {
+             gameState = 'SETUP';
+             teamName=''; selectedEcurieId=null; selectedDriverIds=[]; selectedCar=null; budget=0; purchasedUpgrades={}; driverSeasonScores={}; currentRaceIndex=0; currentSeasonYear=2024; aiTeamBudgets={}; aiTeamUpgrades={}; lastAIRaceUpgrades={}; currentSeasonCalendar=[]; qualifyingResults={q1:[],q2:[],q3:[]}; startingGrid=[]; raceLeaderboard=[]; if(raceIntervalId) clearInterval(raceIntervalId); raceIntervalId=null; dnfCountThisRace=0; raceCompletedForCurrentIndex = false; maxDnfThisRace = 0; marketSelectedDriverIds = []; notificationsLog = []; driverRaceHistory = {};
+             currentDrivers = JSON.parse(JSON.stringify(DriversData)).map(d=>({...d, teamId:null})); currentCars = JSON.parse(JSON.stringify(CarsData)); currentEcuries = JSON.parse(JSON.stringify(EcuriesData)).map(e=>({...e, driverIds:[]}));
+             document.getElementById('budget-display').textContent=`Budget: $${formatNumber(budget)}`; document.getElementById('team-management-screen').style.display='none'; document.getElementById('driver-market-screen').style.display='none'; document.getElementById('ecurie-selection').style.display='none'; document.getElementById('initial-driver-selection').style.display='none'; document.getElementById('race-results').style.display='none'; document.getElementById('live-race-area').style.display='none'; document.getElementById('run-qualifying-button').style.display='block'; document.getElementById('start-race-button').style.display='none'; document.getElementById('accelerate-race-button').style.display='none'; document.getElementById('next-gp-button').style.display='none'; document.getElementById('next-season-button').style.display='none'; clearQualifyingUI(); document.getElementById('initial-budget-selection').style.display='grid'; document.getElementById('final-results-placeholder').style.display = 'block'; document.getElementById('live-race-placeholder').style.display = 'block';
+             if (standingsChartInstance) { standingsChartInstance.destroy(); standingsChartInstance = null; }
+            renderBudgetSelection(); setupTabs(); setupRaceSubTabs(); renderNotifications(); console.log("Game Initialized.");
+        }
+        function initializeGameAfterSetup() {
+             gameState = 'MANAGEMENT';
+             const pt = getTeamById(selectedEcurieId); selectedDriverIds.forEach(id => { const drv = getDriverById(id); if(drv) drv.teamId = selectedEcurieId; }); if (pt) pt.driverIds = selectedDriverIds;
+             // Initialize AI Budgets for first season
+             aiTeamBudgets={}; aiTeamUpgrades={};
+             currentEcuries.forEach(t => { if (t.id !== selectedEcurieId) { aiTeamBudgets[t.id]=0; aiTeamUpgrades[t.id]={};}});
+             assignAIDrivers(); // Assign AI drivers and fill vacancies
+             console.log("Final Driver assignments (Post Initial Setup):", currentDrivers.map(d=>({n:d.name, t:d.teamId})));
+             generateSeasonCalendar();
+             resetSeasonState(true); // Use resetSeasonState(true) for the *very first* season start
+             raceCompletedForCurrentIndex = false; // Ensure this is false for the first race
+             document.getElementById('initial-budget-selection').style.display='none'; document.getElementById('ecurie-selection').style.display='none'; document.getElementById('initial-driver-selection').style.display='none'; document.getElementById('driver-market-screen').style.display = 'none'; document.getElementById('team-management-screen').style.display='block'; clearQualifyingUI(); updateRaceHQButtonState();
+             activateTab('development'); renderAllTabs(); activateRaceSubTab('qualifying');
+             // --- Add Listeners for ALL Buttons ---
+             const qualyButton = document.getElementById('run-qualifying-button'); if (!qualyButton.getAttribute('data-listener')) { qualyButton.addEventListener('click', handleRunQualifyingSequence); qualyButton.setAttribute('data-listener', 'true'); }
+             const startRaceButton = document.getElementById('start-race-button'); if (!startRaceButton.getAttribute('data-listener')) { startRaceButton.addEventListener('click', startRaceSimulation); startRaceButton.setAttribute('data-listener', 'true'); }
+             const accelerateButton = document.getElementById('accelerate-race-button'); if (!accelerateButton.getAttribute('data-listener')) { accelerateButton.addEventListener('click', handleAccelerateRace); accelerateButton.setAttribute('data-listener', 'true'); }
+             const nextGpButton = document.getElementById('next-gp-button'); if (!nextGpButton.getAttribute('data-listener')) { nextGpButton.addEventListener('click', handleNextRaceWeekend); nextGpButton.setAttribute('data-listener', 'true'); }
+             const nextSeasonButton = document.getElementById('next-season-button'); if (!nextSeasonButton.getAttribute('data-listener')) { nextSeasonButton.addEventListener('click', handleStartNextSeason); nextSeasonButton.setAttribute('data-listener', 'true'); }
+             const confirmDriversButton = document.getElementById('confirm-drivers-button'); if (!confirmDriversButton.getAttribute('data-listener')) { confirmDriversButton.addEventListener('click', handleConfirmDriverSelection); confirmDriversButton.setAttribute('data-listener', 'true'); }
+             const clearNotificationsButton = document.getElementById('clear-notifications-button'); if (!clearNotificationsButton.getAttribute('data-listener')) { clearNotificationsButton.addEventListener('click', () => { notificationsLog = []; renderNotifications(); showMessage('Notifications cleared.', 'info'); }); clearNotificationsButton.setAttribute('data-listener', 'true'); }
+        }
+
+        // --- Start Game ---
+        window.onload = initGame;
+
+    </script>
+
+</body>
+</html>
