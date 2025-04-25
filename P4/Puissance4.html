@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power 4</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            margin: 0;
+            display: flex;
+            flex-direction: column; /* Arrange children vertically */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image: url('../P4/bg1.jpg'); /* Replace with a space background */
+            background-size: cover;
+            background-position: center;
+        }
+
+        .menu-container {
+            text-align: center;
+            background-color: rgba(75, 85, 99, 0.8); /* Semi-transparent background */
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+            max-width: 90%;
+            width: 450px;
+            border: 4px solid #6B7280;
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px; /* Add some space below the menu */
+            display: block; /* Ensure it's initially visible */
+        }
+
+        .game-title {
+            font-size: 4em;
+            color: #F59E0B;
+            margin-bottom: 24px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+            animation: fadeIn 1s ease, pulse 2s infinite alternate;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        .play-button, .mode-button {
+            background-color: #8B5CF6;
+            color: #FFFFFF;
+            padding: 18px 36px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 1.75em;
+            margin-top: 24px;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            width: 100%;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+            border: none;
+            animation: buttonPulse 2s infinite alternate;
+        }
+        @keyframes buttonPulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.03); }
+        }
+
+        .play-button:hover, .mode-button:hover {
+            background-color: #6D28D9;
+            transform: scale(1.08);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+        }
+
+        .mode-selection-container {
+            text-align: center;
+            background-color: rgba(75, 85, 99, 0.8); /* Semi-transparent background */
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+            max-width: 90%;
+            width: 450px;
+            border: 4px solid #6B7280;
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px; /* Add some space below mode selection */
+            display: none; /* Initially hidden */
+            flex-direction: column; /* Stack children vertically */
+            align-items: center; /* Center items horizontally */
+        }
+
+        .mode-button {
+            font-size: 1.2em;
+            padding: 12px 24px;
+            margin-top: 12px;
+        }
+
+        .mode-button.active {
+             background-color: #10B981;
+             color: #FFFFFF;
+        }
+
+        .mode-button.active:hover {
+            background-color: #059669;
+        }
+
+
+        #game-container {
+            display: none;
+            border: 4px solid #6B7280;
+            border-radius: 16px;
+            padding: 15px;
+            background-color: rgba(55, 65, 81, 0.9); /* Semi-transparent */
+            box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            margin-left: auto; /* Push the game container to the right */
+            margin-right: auto; /* Center the game container */
+             /* Remove position: relative as the button is no longer a child */
+             /* Removed position: relative as help button is moved out */
+        }
+
+        #grid-container {
+            display: grid;
+            grid-template-columns: repeat(7, 60px);
+            grid-template-rows: repeat(6, 60px);
+            gap: 10px;
+            border: 6px solid #4A5568;
+            border-radius: 12px;
+            padding: 10px;
+            background-color: #4A5568;
+            position: relative; /* Needed for absolute positioning of falling tokens */
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #3B82F6;
+            border: 3px solid #2563EB;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .cell:hover {
+            transform: scale(1.2);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+        }
+
+        .cell.player1 {
+            background-color: #F44336;
+            border-color: #D32F2F;
+             animation: player1Glow 1s ease infinite alternate;
+        }
+        @keyframes player1Glow {
+            from { box-shadow: 0 0 5px #F44336; }
+            to { box-shadow: 0 0 15px #F44336; }
+        }
+
+        .cell.player2 {
+            background-color: #FFC107;
+            border-color: #FF8F00;
+            animation: player2Glow 1s ease infinite alternate;
+        }
+        @keyframes player2Glow {
+            from { box-shadow: 0 0 5px #FFC107; }
+            to { box-shadow: 0 0 15px #FFC107; }
+        }
+
+        .info-box {
+            margin-top: 20px;
+            color: #FFFFFF;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .token {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-block;
+            vertical-align: middle;
+             box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .bonus {
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-left: 5px;
+            font-size: 0.9em;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            display: inline-block;
+        }
+
+        .bonus:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .bonus.double { background-color: #A855F7; color: #FFFFFF; }
+        .bonus.move { background-color: #F97316; color: #FFFFFF; }
+        .bonus.skip { background-color: #10B981; color: #FFFFFF; }
+        .bonus.remove { background-color: #DC2626; color: #FFFFFF; }
+
+        #back-to-menu-button {
+            background-color: #4A5568;
+            color: #FFFFFF;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 10px; /* Add space below the button */
+            display: none; /* Initially hidden */
+        }
+
+        #back-to-menu-button:hover {
+            background-color: #2D3748;
+            transform: scale(1.05);
+            box-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        #next-token-info {
+            margin-top: 10px;
+            color: #FFFFFF;
+            font-size: 1.2em;
+            display: none; /* Initially hidden */
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .name-input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px; /* Space between inputs and buttons */
+            width: 100%; /* Take full width of parent */
+            align-items: center;
+        }
+
+        .name-input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* Align label and input to the left */
+            width: 100%;
+        }
+
+        .name-input-group label {
+            color: #FFFFFF;
+            font-size: 1em;
+            margin-bottom: 5px;
+        }
+
+        .name-input-group input[type="text"] {
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #6B7280;
+            background-color: #374151;
+            color: #FFFFFF;
+            font-size: 1em;
+            width: 100%; /* Input takes full width */
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+
+         .name-input-group input[type="text"]::placeholder {
+            color: #D1D5DB; /* Lighter placeholder text */
+        }
+
+        .score-info {
+            margin-top: 10px;
+            color: #FFFFFF;
+            font-size: 1.2em;
+            display: none; /* Initially hidden */
+            justify-content: center; /* Changed from space-around to center */
+            width: 100%; /* Take full width */
+        }
+
+        /* CSS for the falling token animation */
+        .falling-token {
+            position: absolute;
+            width: 60px; /* Match cell size */
+            height: 60px; /* Match cell size */
+            border-radius: 50%; /* Match cell shape */
+            border: 3px solid transparent; /* Border will be set by JS */
+            transition: top 0.5s ease-in; /* Animation duration and easing */
+            z-index: 10; /* Ensure it's above the grid */
+             box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Match cell shadow */
+        }
+
+        /* Styles for the help button and bubble */
+        #help-button {
+            position: fixed; /* Position relative to the viewport */
+            top: 10px;
+            right: 10px;
+            background-color: #1D4ED8; /* Blue color */
+            color: #FFFFFF;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            line-height: 30px; /* Center the '?' vertically */
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            z-index: 20; /* Ensure it's above other elements */
+            display: none; /* Initially hidden */
+        }
+
+        #help-button:hover {
+            background-color: #1E3A8A; /* Darker blue on hover */
+        }
+
+        #help-bubble {
+            position: fixed; /* Position relative to the viewport */
+            top: 45px; /* Position below the button */
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.95); /* Semi-transparent white */
+            color: #1F2937; /* Dark text */
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            max-width: 300px; /* Increased max-width */
+            font-size: 0.9em;
+            line-height: 1.4;
+            z-index: 20; /* Ensure it's above other elements */
+            display: none; /* Initially hidden */
+            text-align: left;
+        }
+
+        #help-bubble::before {
+            content: '';
+            position: absolute;
+            top: -10px; /* Position above the bubble */
+            right: 10px;
+            border-width: 0 10px 10px 10px;
+            border-color: transparent transparent rgba(255, 255, 255, 0.95) transparent;
+            filter: drop-shadow(0 -2px 2px rgba(0,0,0,0.1)); /* Add shadow to the arrow */
+        }
+
+
+    </style>
+</head>
+<body class="bg-gray-900">
+    <div class="menu-container">
+        <h1 class="game-title">Power 4</h1>
+        <button class="play-button" id="play-button">Play</button>
+    </div>
+
+    <div class="mode-selection-container" id="mode-selection-container">
+        <div class="name-input-container">
+            <div class="name-input-group">
+                <label for="player1-name">Player 1 Name:</label>
+                <input type="text" id="player1-name" placeholder="Enter Player 1 Name">
+            </div>
+            <div class="name-input-group">
+                <label for="player2-name">Player 2 Name:</label>
+                <input type="text" id="player2-name" placeholder="Enter Player 2 Name">
+            </div>
+        </div>
+
+        <button class="mode-button" id="ai-button">AI Mode</button>
+        <button class="mode-button" id="competitive-mode-button">Competitive Mode</button>
+        <button class="mode-button" id="normal-mode-button">Normal Mode</button>
+        <button class="mode-button" id="tetris-mode-button">Tetris 4 Mode</button>
+    </div>
+
+    <button id="back-to-menu-button">Back to Menu</button>
+
+    <div id="game-container">
+        <div id="grid-container"></div>
+        <div class="info-box" id="turn-info">
+            <span id="turn-text"></span>
+            <div class="token" id="player-token"></div>
+        </div>
+        <div id="next-token-info">
+            <span id="next-token-text">Next Token:</span>
+            <div class="token" id="next-player-token"></div>
+        </div>
+        <div class="score-info" id="score-info">
+            <span id="current-score">Score: 0</span>
+            <span id="high-score"></span> </div>
+    </div>
+
+    <button id="help-button">?</button>
+    <div id="help-bubble">
+        </div>
+
+    <script>
+        const playButton = document.getElementById('play-button');
+        const menuContainer = document.querySelector('.menu-container');
+        const modeSelectionContainer = document.getElementById('mode-selection-container');
+        const gameContainer = document.getElementById('game-container');
+        const gridContainer = document.getElementById('grid-container');
+        const turnInfo = document.getElementById('turn-info');
+        const turnText = document.getElementById('turn-text');
+        const playerToken = document.getElementById('player-token');
+        const aiButton = document.getElementById('ai-button');
+        const competitiveModeButton = document.getElementById('competitive-mode-button');
+        const normalModeButton = document.getElementById('normal-mode-button');
+        const tetrisModeButton = document.getElementById('tetris-mode-button'); // Get the Tetris mode button
+        const backToMenuButton = document.getElementById('back-to-menu-button'); // Get the back button
+        const nextTokenInfo = document.getElementById('next-token-info'); // Get the next token info container
+        const nextPlayerToken = document.getElementById('next-player-token'); // Get the next player token element
+        const player1NameInput = document.getElementById('player1-name'); // Get player 1 name input
+        const player2NameInput = document.getElementById('player2-name'); // Get player 2 name input
+        const scoreInfo = document.getElementById('score-info'); // Get the score info container
+        const currentScoreDisplay = document.getElementById('current-score'); // Get the current score display
+        const highScoreDisplay = document.getElementById('high-score'); // Get the high score display
+        const helpButton = document.getElementById('help-button'); // Get the help button
+        const helpBubble = document.getElementById('help-bubble'); // Get the help bubble
+
+
+        let grid = [];
+        let currentPlayer = 0; // 0 for Player 1 (Red), 1 for Player 2 (Yellow)
+        let gameOver = false;
+        let aiMode = false;
+        let competitiveMode = false;
+        let normalMode = false; // Added normalMode flag
+        let tetrisMode = false; // New variable for Tetris mode
+        let timerId;
+        let timeLeft = 7; // Changed timer duration for competitive mode to 7 seconds
+        let aiDifficulty = 5; // Set default AI difficulty to 5 (hard)
+        let nextTokenColor = 0; // Variable to store the color of the next token in Tetris mode
+        let playerNames = ["Player 1", "Player 2"]; // Array to store player names
+        let currentScore = 0; // Variable to track the current score
+        let isAnimating = false; // Flag to prevent clicks during animation
+
+
+        // Event listener for the main Play button
+        playButton.addEventListener('click', () => {
+            menuContainer.style.display = 'none'; // Hide the menu
+            modeSelectionContainer.style.display = 'flex'; // Show mode selection
+            gameContainer.style.display = 'none'; // Ensure game container is hidden initially
+            backToMenuButton.style.display = 'none'; // Ensure back button is hidden
+            helpButton.style.display = 'none'; // Hide help button in menu
+            helpBubble.style.display = 'none'; // Hide help bubble in menu
+        });
+
+        // Event listener for AI Mode button
+        aiButton.addEventListener('click', () => {
+            aiMode = true;
+            competitiveMode = false;
+            normalMode = false; // Ensure normal mode is off
+            tetrisMode = false; // Ensure Tetris mode is off
+            aiButton.classList.add('active');
+            competitiveModeButton.classList.remove('active');
+            normalModeButton.classList.remove('active');
+            tetrisModeButton.classList.remove('active'); // Remove active from Tetris button
+            startGame();
+        });
+
+        // Event listener for Competitive Mode button
+        competitiveModeButton.addEventListener('click', () => {
+            competitiveMode = true;
+            aiMode = false;
+            normalMode = false; // Ensure normal mode is off
+            tetrisMode = false; // Ensure Tetris mode is off
+            competitiveModeButton.classList.add('active');
+            aiButton.classList.remove('active');
+            normalModeButton.classList.remove('active');
+            tetrisModeButton.classList.remove('active'); // Remove active from Tetris button
+            startGame();
+        });
+
+        // Event listener for Normal Mode button
+        normalModeButton.addEventListener('click', () => {
+            competitiveMode = false; // Ensure competitive mode is off in normal mode
+            aiMode = false; // Ensure AI mode is off in normal mode
+            normalMode = true; // Activate normal mode
+            tetrisMode = false; // Ensure Tetris mode is off
+            normalModeButton.classList.add('active');
+            aiButton.classList.remove('active');
+            competitiveModeButton.classList.remove('active');
+            tetrisModeButton.classList.remove('active'); // Remove active from Tetris button
+            startGame();
+        });
+
+         // Event listener for Tetris 4 Mode button
+        tetrisModeButton.addEventListener('click', () => {
+            tetrisMode = true; // Activate Tetris mode
+            aiMode = false; // Ensure other modes are off
+            competitiveMode = false; // Ensure other modes are off
+            normalMode = false; // Ensure normal mode is off
+            tetrisModeButton.classList.add('active');
+            aiButton.classList.remove('active');
+            competitiveModeButton.classList.remove('active');
+            normalModeButton.classList.remove('active');
+            startGame();
+        });
+
+
+        // Event listener for Back to Menu button
+        backToMenuButton.addEventListener('click', () => {
+            // Stop the timer if it's running
+            clearInterval(timerId);
+            // Reset game state
+            grid = [];
+            currentPlayer = 0;
+            gameOver = false;
+            aiMode = false;
+            competitiveMode = false;
+            normalMode = false; // Reset normal mode
+            tetrisMode = false; // Reset Tetris mode
+            timeLeft = 7; // Reset timer duration to 7 seconds
+            nextTokenColor = 0; // Reset next token color
+            // playerNames are NOT reset here to keep the names entered by the user
+            currentScore = 0; // Reset current score
+            updateScoreDisplay(); // Update score display
+
+
+            // Hide game container and show menu
+            gameContainer.style.display = 'none';
+            menuContainer.style.display = 'block'; // Show the menu
+            modeSelectionContainer.style.display = 'none'; // Hide mode selection too
+            backToMenuButton.style.display = 'none'; // Hide the back button
+            nextTokenInfo.style.display = 'none'; // Hide next token info
+            scoreInfo.style.display = 'none'; // Hide score info
+            helpButton.style.display = 'none'; // Hide help button when going back to menu
+            helpBubble.style.display = 'none'; // Hide help bubble when going back to menu
+
+
+            // Clear game display elements
+            gridContainer.innerHTML = '';
+            gridContainer.style.display = 'none';
+            turnText.textContent = '';
+            playerToken.style.backgroundColor = '';
+            nextPlayerToken.style.backgroundColor = ''; // Clear next player token color
+
+            // Remove active classes from mode buttons
+            aiButton.classList.remove('active');
+            competitiveModeButton.classList.remove('active');
+            normalModeButton.classList.remove('active');
+            tetrisModeButton.classList.remove('active'); // Remove active from Tetris button
+        });
+
+        // Event listener for the Help button
+        helpButton.addEventListener('click', () => {
+            // Toggle the display of the help bubble
+            if (helpBubble.style.display === 'none' || helpBubble.style.display === '') {
+                helpBubble.style.display = 'block';
+            } else {
+                helpBubble.style.display = 'none';
+            }
+        });
+
+
+        function startGame() {
+            // Get player names from input fields, default to "Player 1" and "Player 2" if empty
+            playerNames[0] = player1NameInput.value.trim() || "Player 1";
+
+            // If AI mode is active, set Player 2's name to "AI"
+            if (aiMode) {
+                playerNames[1] = "AI";
+                helpButton.style.display = 'block'; // Show help button in AI mode
+                helpBubble.textContent = "This mode allows you to play against the best AI ever, Good Luck."; // Set AI rules
+            } else if (competitiveMode) {
+                 playerNames[1] = player2NameInput.value.trim() || "Player 2";
+                 helpButton.style.display = 'block'; // Show help button in Competitive mode
+                 helpBubble.textContent = "In this mode, you have to be fast. 7 seconds. Only 7 seconds to play a token. And if you're too slow, the other player will skip your turn."; // Set Competitive rules
+            } else if (normalMode) { // Added Normal Mode check
+                 playerNames[1] = player2NameInput.value.trim() || "Player 2";
+                 helpButton.style.display = 'block'; // Show help button in Normal mode
+                 helpBubble.textContent = "Welcome to the classic Power 4 game. Align 4 tokens and try to block your opponent to win the game ! Align horizontally, vertically or diagonally to win !"; // Set Normal rules
+            } else if (tetrisMode) { // Added Tetris 4 Mode check
+                 playerNames[1] = player2NameInput.value.trim() || "Player 2"; // Tetris 4 can be single or two player, but for now we'll keep the second name input
+                 helpButton.style.display = 'block'; // Show help button in Tetris 4 mode
+                 helpBubble.textContent = "In this special mode, you have to clean the grid by align 4 or more tokens of the same color. Each time you align token you earn points: 100pts for 4 tokens, 125pts for 5 tokens, 150pts for 6 tokens and 200pts for 7 tokens. If the grid is full, you lost"; // Set Tetris 4 rules
+            }
+            else {
+                // Otherwise, get Player 2's name from the input field
+                playerNames[1] = player2NameInput.value.trim() || "Player 2";
+                helpButton.style.display = 'none'; // Hide help button in other modes
+                helpBubble.style.display = 'none'; // Ensure bubble is hidden
+            }
+
+            currentScore = 0; // Reset score at the start of a new game
+            updateScoreDisplay(); // Update score display
+
+            // Hide mode selection and show game container
+            modeSelectionContainer.style.display = 'none';
+            gameContainer.style.display = 'block';
+            backToMenuButton.style.display = 'block'; // Show the back button
+
+
+            grid = createEmptyGrid();
+
+            if (tetrisMode) {
+                fillLowerGridRandomly(3); // Fill the bottom 3 rows randomly in Tetris mode
+                 turnInfo.style.display = 'none'; // Hide turn info in single-player Tetris mode
+                 nextTokenInfo.style.display = 'flex'; // Show next token info
+                 scoreInfo.style.display = 'flex'; // Show score info
+                 currentPlayer = Math.floor(Math.random() * 2); // Start with a random token color
+                 updateNextTokenDisplay(); // Display the initial next token color
+            } else {
+                 turnInfo.style.display = 'flex'; // Show turn info in other modes
+                 nextTokenInfo.style.display = 'none'; // Hide next token info
+                 scoreInfo.style.display = 'none'; // Hide score info
+                 currentPlayer = Math.floor(Math.random() * 2); // Random start player in other modes
+                 updateTurnInfo();
+            }
+
+            gridContainer.innerHTML = '';
+            createGrid();
+            gameOver = false;
+            isAnimating = false; // Reset animation flag
+
+            gridContainer.style.display = 'grid'; // Show the grid
+
+            // Start timer only in competitive mode
+            if (competitiveMode) {
+                startTimer();
+            } else {
+                clearInterval(timerId); // Clear any existing timer
+                if (!tetrisMode) { // Only set initial turn text if not in Tetris mode
+                    updateTurnInfo(); // Update turn info with names
+                }
+            }
+
+            // If AI mode is active and AI starts, trigger AI move
+            if (aiMode && currentPlayer === 1) {
+                setTimeout(aiMove, 500); // Delay AI move slightly for better user experience
+            }
+        }
+
+        function createEmptyGrid() {
+            let newGrid = [];
+            for (let i = 0; i < 6; i++) {
+                newGrid[i] = new Array(7).fill(null);
+            }
+            return newGrid;
+        }
+
+        function fillLowerGridRandomly(rowsToFill) {
+            // Iterate from the bottom row upwards
+            for (let r = 5; r >= 6 - rowsToFill; r--) {
+                for (let c = 0; c < 7; c++) {
+                    // A token can be placed here if it's the bottom row OR if the cell below is not null
+                    const canPlace = (r === 5 || grid[r + 1][c] !== null);
+
+                    if (canPlace) {
+                        // Randomly decide whether to place a token in this valid spot
+                        const random = Math.random();
+                        if (random < 0.8) { // Increased probability for tokens (was 0.6)
+                            grid[r][c] = Math.floor(Math.random() * 2); // 0 or 1
+                        } else {
+                            grid[r][c] = null;
+                        }
+                    } else {
+                        // If a token cannot be placed here (nothing below it), ensure it's null
+                        grid[r][c] = null;
+                    }
+                }
+            }
+        }
+
+
+        function createGrid() {
+            gridContainer.innerHTML = ''; // Clear existing grid cells
+            for (let i = 0; i < 6; i++) {
+                for (let j = 0; j < 7; j++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', handleCellClick);
+                    gridContainer.appendChild(cell);
+                }
+            }
+             // Update the display of existing tokens based on the initial grid state
+            updateGridDisplay();
+        }
+
+        function updateGridDisplay() {
+             const cells = gridContainer.querySelectorAll('.cell');
+             cells.forEach(cell => {
+                 const row = parseInt(cell.dataset.row);
+                 const col = parseInt(cell.dataset.col);
+                 cell.classList.remove('player1', 'player2'); // Remove existing player classes
+                 if (grid[row][col] === 0) {
+                     cell.classList.add('player1');
+                     cell.style.backgroundColor = '#F44336'; // Ensure background color is set
+                     cell.style.borderColor = '#D32F2F'; // Ensure border color is set
+                 } else if (grid[row][col] === 1) {
+                     cell.classList.add('player2');
+                      cell.style.backgroundColor = '#FFC107'; // Ensure background color is set
+                     cell.style.borderColor = '#FF8F00'; // Ensure border color is set
+                 } else {
+                      // If grid[row][col] is null (after clearing), ensure the cell is empty
+                      cell.style.backgroundColor = '#3B82F6'; // Reset to empty cell color
+                      cell.style.borderColor = '#2563EB'; // Reset to empty cell border color
+                 }
+             });
+        }
+
+
+        function handleCellClick(event) {
+            if (gameOver || isAnimating) return; // Prevent clicks during animation
+
+
+            const row = parseInt(event.target.dataset.row);
+            const col = parseInt(event.target.dataset.col);
+
+            // In Tetris mode, the player can place either color.
+            // We'll use the current player variable to alternate the color being placed.
+            let placedRow = dropPiece(row, col);
+
+            if (placedRow !== null) {
+                 // Piece was successfully dropped
+                 isAnimating = true; // Set animation flag
+                 animateTokenDrop(col, placedRow, currentPlayer, () => {
+                     // This callback runs after the animation is complete
+
+                     if (tetrisMode) {
+                         let clearedLines = checkClearedLines(); // Check for lines of 4 of any color
+
+                         // Calculate score for cleared lines
+                         let pointsEarned = 0;
+                         clearedLines.forEach(line => {
+                             const lineLength = line.length;
+                             if (lineLength === 4) pointsEarned += 100;
+                             else if (lineLength === 5) pointsEarned += 125;
+                             else if (lineLength === 6) pointsEarned += 150;
+                             else if (lineLength === 7) pointsEarned += 200;
+                         });
+                         currentScore += pointsEarned; // Add points to the current score
+                         updateScoreDisplay(); // Update the score display
+
+
+                         while (clearedLines.length > 0) {
+                             removeClearedTokens(clearedLines);
+                             dropTokensAbove();
+                             // After dropping, re-check for new lines created by the drop
+                             clearedLines = checkClearedLines();
+                             // Recalculate points for newly formed lines after drop
+                             let newPointsEarned = 0;
+                              clearedLines.forEach(line => {
+                                  const lineLength = line.length;
+                                  if (lineLength === 4) newPointsEarned += 100;
+                                  else if (lineLength === 5) newPointsEarned += 125;
+                                  else if (lineLength === 6) newPointsEarned += 150;
+                                  else if (lineLength === 7) newPointsEarned += 200;
+                              });
+                             currentScore += newPointsEarned; // Add points for new lines
+                             updateScoreDisplay(); // Update the score display again
+                         }
+
+                         // Update the display after all drops are complete
+                         updateGridDisplay();
+
+                         // After clearing lines, check for win or lose in Tetris mode
+                         if (isGridEmpty()) {
+                              gameOver = true;
+                              displayWinner('win'); // Indicate player win
+                              if (competitiveMode) {
+                                  clearInterval(timerId);
+                              }
+                              isAnimating = false; // Reset animation flag
+                              return;
+                         } else if (isGridFull()) {
+                              gameOver = true;
+                              displayWinner('lose'); // Indicate player lose
+                              if (competitiveMode) {
+                                  clearInterval(timerId);
+                              }
+                              isAnimating = false; // Reset animation flag
+                              return;
+                         }
+
+
+                     } else { // Normal or Competitive mode
+                          // updateCellDisplay(placedRow, col); // Display is updated after animation
+                          let winningLines = checkWinningLines(); // Check for winning lines (same player)
+                          if (winningLines.length > 0) { // Check if any winning lines were formed
+                              gameOver = true;
+                              displayWinner(currentPlayer); // Current player wins
+                              // Stop timer if game is over
+                              if (competitiveMode) {
+                                  clearInterval(timerId);
+                              }
+                              isAnimating = false; // Reset animation flag
+                              return;
+                          } else if (isGridFull()) { // Check for tie in normal/competitive mode
+                               gameOver = true;
+                               displayWinner(-1); // Tie
+                               if (competitiveMode) {
+                                   clearInterval(timerId);
+                               }
+                               isAnimating = false; // Reset animation flag
+                               return;
+                          }
+                      }
+
+
+                     // If no win, lose, or tie, switch player and update turn info (only in multi-player modes)
+                     if (!tetrisMode) {
+                         switchPlayer();
+                         updateTurnInfo();
+                         // If AI mode is active and it's AI's turn, trigger AI move
+                         if (aiMode && currentPlayer === 1) {
+                             setTimeout(aiMove, 500); // Delay AI move slightly
+                         }
+                         // Reset timer for the next player in competitive mode
+                         if (competitiveMode) {
+                             resetTimer();
+                         }
+                     } else {
+                          // In Tetris mode, the player keeps their turn after placing a piece,
+                          // but we still alternate the token color they place for variety.
+                          switchPlayer(); // Alternate the color for the next piece they drop
+                          updateNextTokenDisplay(); // Update the next token display
+                     }
+                     isAnimating = false; // Reset animation flag after all checks and updates
+                 }); // End of animation callback
+            }
+             // If placedRow is null, the column was full, do nothing.
+        }
+
+        function dropPiece(row, col) {
+            for (let i = 5; i >= row; i--) {
+                if (grid[i][col] === null) {
+                    grid[i][col] = currentPlayer; // Place the current player's token in the grid array
+                    return i; // Return the row where the piece was placed
+                }
+            }
+            return null; // Column is full
+        }
+
+        // Function to animate the token dropping
+        function animateTokenDrop(col, finalRow, player, callback) {
+            const fallingToken = document.createElement('div');
+            fallingToken.classList.add('falling-token');
+
+            // Set initial position (at the top of the grid, aligned with the column)
+            // Need to calculate the left position based on the column and grid container padding/gap
+            const cellWidth = 60; // Matches .cell width
+            const cellGap = 10; // Matches grid-container gap
+            const gridPadding = 10; // Matches grid-container padding
+            const initialLeft = gridPadding + (col * (cellWidth + cellGap));
+            const initialTop = -cellWidth; // Start above the grid
+
+            fallingToken.style.left = `${initialLeft}px`;
+            fallingToken.style.top = `${initialTop}px`;
+
+            // Set token color and border
+            if (player === 0) {
+                fallingToken.style.backgroundColor = '#F44336';
+                fallingToken.style.borderColor = '#D32F2F';
+            } else {
+                fallingToken.style.backgroundColor = '#FFC107';
+                fallingToken.style.borderColor = '#FF8F00';
+            }
+
+            gridContainer.appendChild(fallingToken);
+
+            // Calculate the final top position based on the final row
+            const finalTop = gridPadding + (finalRow * (cellWidth + cellGap));
+
+            // Trigger the animation after a small delay to allow the element to be added to the DOM
+            requestAnimationFrame(() => {
+                 fallingToken.style.top = `${finalTop}px`;
+            });
+
+
+            // Listen for the end of the transition
+            fallingToken.addEventListener('transitionend', () => {
+                // Animation is complete
+                fallingToken.remove(); // Remove the temporary token
+
+                // Update the actual grid cell's display
+                updateCellDisplay(finalRow, col);
+
+                // Execute the callback function (which contains the rest of the game logic)
+                if (callback) {
+                    callback();
+                }
+            });
+        }
+
+
+        function updateCellDisplay(row, col) {
+            const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (!cell) return; // Added a check in case the cell element is not found
+
+            cell.classList.remove('player1', 'player2'); // Remove existing classes
+            if (grid[row][col] === 0) {
+                cell.classList.add('player1');
+                cell.style.backgroundColor = '#F44336'; // Ensure background color is set
+                cell.style.borderColor = '#D32F2F'; // Ensure border color is set
+            } else if (grid[row][col] === 1) {
+                cell.classList.add('player2');
+                 cell.style.backgroundColor = '#FFC107'; // Ensure background color is set
+                cell.style.borderColor = '#FF8F00'; // Ensure border color is set
+            } else {
+                 /* If grid[row][col] is null (after clearing lines),
+                    ensure the cell is empty and reset its style */
+                 cell.style.backgroundColor = '#3B82F6'; // Reset to empty cell color
+                 cell.style.borderColor = '#2563EB'; // Reset to empty cell border color
+            }
+        }
+
+        // Check for winning lines in Normal/Competitive mode (4 of the same player's tokens)
+        function checkWinningLines() {
+             let winningLines = [];
+
+            // Horizontal
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c <= 3; c++) {
+                    const player = grid[r][c];
+                    if (player !== null && grid[r][c + 1] !== null && grid[r][c + 2] !== null && grid[r][c + 3] !== null &&
+                        player === grid[r][c + 1] && player === grid[r][c + 2] && player === grid[r][c + 3]) {
+                         winningLines.push([{row: r, col: c}, {row: r, col: c + 1}, {row: r, col: c + 2}, {row: r, col: c + 3}]);
+                    }
+                }
+            }
+
+            // Vertical
+            for (let c = 0; c < 7; c++) {
+                for (let r = 0; r <= 2; r++) {
+                    const player = grid[r][c];
+                    if (player !== null && grid[r + 1][c] !== null && grid[r + 2][c] !== null && grid[r + 3][c] !== null &&
+                        player === grid[r + 1][c] && player === grid[r + 2][c] && player === grid[r + 3][c]) {
+                         winningLines.push([{row: r, col: c}, {row: r + 1, col: c}, {row: r + 2, col: c}, {row: r + 3, col: c}]);
+                    }
+                }
+            }
+
+            // Diagonal (positive slope)
+            for (let r = 0; r <= 2; r++) {
+                for (let c = 0; c <= 3; c++) {
+                    const player = grid[r][c];
+                    if (player !== null && grid[r + 1][c + 1] !== null && grid[r + 2][c + 2] !== null && grid[r + 3][c + 3] !== null &&
+                        player === grid[r + 1][c + 1] && player === grid[r + 2][c + 2] && player === grid[r + 3][c + 3]) {
+                         winningLines.push([{row: r, col: c}, {row: r + 1, col: c + 1}, {row: r + 2, col: c + 2}, {row: r + 3, col: c + 3}]);
+                    }
+                }
+            }
+
+            // Diagonal (negative slope)
+            for (let r = 3; r < 6; r++) {
+                for (let c = 0; c <= 3; c++) {
+                     const player = grid[r][c];
+                     if (player !== null && grid[r - 1][c + 1] !== null && grid[r - 2][c + 2] !== null && grid[r - 3][c + 3] !== null &&
+                         player === grid[r - 1][c + 1] && player === grid[r - 2][c + 2] && player === grid[r - 3][c + 3]) {
+                         winningLines.push([{row: r, col: c}, {row: r - 1, col: c + 1}, {row: r - 2, col: c + 2}, {row: r - 3, col: c + 3}]);
+                     }
+                }
+            }
+
+            return winningLines; // Return an array of winning lines
+        }
+
+        // Check for lines of 4 or more of the SAME non-null token in Tetris mode
+        function checkClearedLines() {
+             let clearedLines = [];
+             const directions = [
+                 { dr: 0, dc: 1 }, // Horizontal
+                 { dr: 1, dc: 0 }, // Vertical
+                 { dr: 1, dc: 1 }, // Diagonal (positive slope)
+                 { dr: 1, dc: -1 } // Diagonal (negative slope)
+             ];
+
+             const visited = new Set(); // To avoid adding the same line multiple times
+
+             for (let r = 0; r < 6; r++) {
+                 for (let c = 0; c < 7; c++) {
+                     const player = grid[r][c];
+                     if (player === null) continue;
+
+                     for (const dir of directions) {
+                         let line = [];
+                         let currentRow = r;
+                         let currentCol = c;
+
+                         // Check in the positive direction
+                         while (currentRow >= 0 && currentRow < 6 && currentCol >= 0 && currentCol < 7 && grid[currentRow][currentCol] === player) {
+                             line.push({ row: currentRow, col: currentCol });
+                             currentRow += dir.dr;
+                             currentCol += dir.dc;
+                         }
+
+                         // Check in the negative direction (only for horizontal, and diagonals)
+                         if (dir.dr === 0 || dir.dc !== 0) {
+                             currentRow = r - dir.dr;
+                             currentCol = c - dir.dc;
+                             while (currentRow >= 0 && currentRow < 6 && currentCol >= 0 && currentCol < 7 && grid[currentRow][currentCol] === player) {
+                                 line.unshift({ row: currentRow, col: currentCol }); // Add to the beginning
+                                 currentRow -= dir.dr;
+                                 currentCol -= dir.dc;
+                             }
+                         }
+
+
+                         if (line.length >= 4) {
+                            // Add the line to clearedLines if it hasn't been added already
+                            const lineKey = line.map(token => `${token.row}-${token.col}`).sort().join(',');
+                            if (!visited.has(lineKey)) {
+                                clearedLines.push(line);
+                                visited.add(lineKey);
+                            }
+                         }
+                     }
+                 }
+             }
+
+            return clearedLines; // Return an array of lines to be cleared
+        }
+
+
+        function removeClearedTokens(clearedLines) {
+             // Use a Set to avoid removing the same token multiple times if it's part of multiple cleared lines
+             const tokensToRemove = new Set();
+             clearedLines.forEach(line => {
+                 line.forEach(token => {
+                     tokensToRemove.add(`${token.row}-${token.col}`);
+                 });
+             });
+
+             tokensToRemove.forEach(tokenKey => {
+                 const [row, col] = tokenKey.split('-').map(Number);
+                 grid[row][col] = null; // Remove from grid array
+                 // The visual update will happen in updateGridDisplay after dropping
+             });
+        }
+
+        function dropTokensAbove() {
+            // Iterate through each column
+            for (let col = 0; col < 7; col++) {
+                let lowestEmptyRow = 5; // Start from the bottom row
+
+                // Find the lowest empty row in the current column
+                while (lowestEmptyRow >= 0 && grid[lowestEmptyRow][col] !== null) {
+                    lowestEmptyRow--;
+                }
+
+                // If there's an empty row below the top row, start dropping tokens
+                if (lowestEmptyRow >= 0) {
+                    // Iterate from the row above the lowest empty row up to the top
+                    for (let row = lowestEmptyRow - 1; row >= 0; row--) {
+                        // If a token is found, move it down to the lowest empty row
+                        if (grid[row][col] !== null) {
+                            grid[lowestEmptyRow][col] = grid[row][col]; // Move the token down
+                            grid[row][col] = null; // Set the original position to null
+                            lowestEmptyRow--; // Move the lowest empty row up by one
+                        }
+                    }
+                }
+            }
+             // Visual update for the entire grid will happen after this function call
+        }
+
+
+        function isGridFull() {
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c < 7; c++) {
+                    if (grid[r][c] === null) {
+                        return false; // Found an empty cell, grid is not full
+                    }
+                }
+            }
+            return true; // No empty cells found, grid is full
+        }
+
+        function isGridEmpty() {
+             for (let r = 0; r < 6; r++) {
+                 for (let c = 0; c < 7; c++) {
+                     if (grid[r][c] !== null) {
+                         return false; // Found a token, grid is not empty
+                     }
+                 }
+             }
+             return true; // No tokens found, grid is empty
+        }
+
+
+        function displayWinner(result) { // 'win', 'lose', or player number for other modes
+            let message;
+            if (result === 'win') {
+                message = `${playerNames[0]} Wins! Grid Cleared!`; // Use player name
+            } else if (result === 'lose') {
+                 message = `${playerNames[0]} Loses! Grid Full!`; // Use player name
+            } else if (result === -1) {
+                message = "It's a Tie!"; // For normal/competitive mode ties
+            }
+            else {
+                 message = `${playerNames[result]} wins!`; // Use player name
+            }
+
+            // Use a simple message box or update turn info text
+            turnText.textContent = message;
+            playerToken.style.backgroundColor = ''; // Hide token on win/tie/lose
+
+            // Restart game after a delay
+            setTimeout(() => {
+                startGame();
+            }, 5000); // 5 second delay before restarting
+        }
+
+
+        function switchPlayer() {
+            currentPlayer = 1 - currentPlayer;
+        }
+
+        function updateTurnInfo() {
+            // Only update turn info if not in competitive or tetris mode
+            if (!competitiveMode && !tetrisMode) {
+                 turnText.textContent = `Turn: ${playerNames[currentPlayer]}`; // Use player name
+            } else if (competitiveMode) {
+                // In competitive mode, display timer and current player
+                turnText.textContent = `${playerNames[currentPlayer]}'s Turn: ${timeLeft}s`; // Use player name
+            }
+             // In Tetris mode, turn info is hidden
+            playerToken.classList.remove('player1', 'player2');
+            if (currentPlayer === 0) {
+                playerToken.classList.add('player1');
+                playerToken.style.backgroundColor = '#F44336';
+            } else {
+                playerToken.classList.add('player2');
+                playerToken.style.backgroundColor = '#FFC107';
+            }
+        }
+
+        // Function to update the display of the next token in Tetris mode
+        function updateNextTokenDisplay() {
+            nextPlayerToken.classList.remove('player1', 'player2');
+            // The next token color is the current player color *before* the switch
+            const colorToDisplay = currentPlayer;
+            if (colorToDisplay === 0) {
+                nextPlayerToken.classList.add('player1');
+                nextPlayerToken.style.backgroundColor = '#F44336';
+            } else {
+                nextPlayerToken.classList.add('player2');
+                nextPlayerToken.style.backgroundColor = '#FFC107';
+            }
+        }
+
+        // Function to update the score display
+        function updateScoreDisplay() {
+            currentScoreDisplay.textContent = `Score: ${currentScore}`;
+            // In Tetris mode, high score is specific to the player
+             highScoreDisplay.textContent = ''; // Ensure high score display is empty in all modes
+        }
+
+
+        // Competitive Mode Timer Functions
+        function startTimer() {
+            clearInterval(timerId); // Clear any existing timer
+            timeLeft = 7; // Reset timer to initial value (7 seconds)
+            updateTurnInfo(); // Display initial time
+            timerId = setInterval(() => {
+                timeLeft--;
+                updateTurnInfo();
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    handleTimerEnd(); // Call a new function to handle timer end
+                }
+            }, 1000); // Update every second
+        }
+
+        function resetTimer() {
+            clearInterval(timerId);
+            startTimer();
+        }
+
+        // New function to handle timer end in Competitive Mode
+        function handleTimerEnd() {
+            if (gameOver) return; // Do nothing if game is already over
+
+            // The player whose turn it was when the timer ran out skips their turn
+            const skippedPlayerIndex = currentPlayer;
+            turnText.textContent = `${playerNames[skippedPlayerIndex]} skipped their turn!`; // Indicate skipped turn
+            playerToken.style.backgroundColor = ''; // Hide token for a moment
+
+            // Switch to the next player
+            switchPlayer();
+            updateTurnInfo(); // Update turn info for the next player
+
+            // Reset and start the timer for the next player
+            resetTimer();
+
+            // Re-enable clicks if they were disabled (e.g., during AI thinking, although AI doesn't use timer)
+            gridContainer.style.pointerEvents = 'auto';
+        }
+
+
+        // AI Implementation (Basic Minimax)
+        function aiMove() {
+            if (gameOver || currentPlayer !== 1 || isAnimating) return; // Only AI makes moves when it's their turn and not animating
+
+            // Disable clicks while AI is thinking
+            gridContainer.style.pointerEvents = 'none';
+
+            // Use minimax to find the best move
+            const bestMove = getBestMove(grid, aiDifficulty, -Infinity, Infinity, true); // AI is maximizing player (true)
+
+            // Drop the piece in the best column
+            if (bestMove !== null) {
+                 isAnimating = true; // Set animation flag for AI move
+                 let placedRow = dropPiece(0, bestMove); // Drop into the determined column
+
+                 animateTokenDrop(bestMove, placedRow, currentPlayer, () => {
+                     // This callback runs after the animation is complete
+
+                     // Check for win or tie after AI move
+                     let winningLines = checkWinningLines();
+                     if (winningLines.length > 0) {
+                         gameOver = true;
+                         displayWinner(currentPlayer); // AI wins
+                         if (competitiveMode) {
+                             clearInterval(timerId);
+                         }
+                     } else if (isGridFull()) {
+                         gameOver = true;
+                         displayWinner(-1); // Tie
+                         if (competitiveMode) {
+                             clearInterval(timerId);
+                         }
+                     } else {
+                         // If no win, switch player and update turn info
+                         switchPlayer();
+                         updateTurnInfo();
+                         // Reset timer for the next player in competitive mode
+                         if (competitiveMode) {
+                             resetTimer();
+                         }
+                          // If it's AI mode and it's AI's turn again (shouldn't happen immediately after AI move, but good practice)
+                         if (aiMode && currentPlayer === 1) {
+                             setTimeout(aiMove, 500);
+                         }
+                     }
+                     isAnimating = false; // Reset animation flag after all checks and updates
+                     gridContainer.style.pointerEvents = 'auto'; // Re-enable clicks after AI move animation
+                 }); // End of animation callback
+            } else {
+                 // If AI couldn't find a move (column full), re-enable clicks
+                 isAnimating = false; // Reset animation flag
+                 gridContainer.style.pointerEvents = 'auto'; // Re-enable clicks
+            }
+        }
+
+        // Minimax algorithm to find the best move for the AI
+        function getBestMove(board, depth, alpha, beta, isMaximizingPlayer) {
+            const validLocations = getValidLocations(board);
+            let bestScore = isMaximizingPlayer ? -Infinity : Infinity;
+            let bestColumn = validLocations[Math.floor(Math.random() * validLocations.length)]; // Start with a random valid column
+
+            for (const col of validLocations) {
+                const row = getNextOpenRow(board, col);
+                if (row !== null) {
+                    const tempBoard = board.map(arr => [...arr]); // Create a copy of the board
+                    tempBoard[row][col] = isMaximizingPlayer ? 1 : 0; // Place AI's token (1) or opponent's token (0)
+
+                    const score = minimax(tempBoard, depth - 1, alpha, beta, !isMaximizingPlayer);
+
+                    if (isMaximizingPlayer) {
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestColumn = col;
+                        }
+                        alpha = Math.max(alpha, bestScore);
+                    } else {
+                        if (score < bestScore) {
+                            score = score; // Corrected typo here
+                            bestColumn = col;
+                        }
+                        beta = Math.min(beta, score); // Corrected typo here
+                    }
+
+                    if (beta <= alpha) {
+                        break; // Alpha-beta pruning
+                    }
+                }
+            }
+            return bestColumn;
+        }
+
+        function minimax(board, depth, alpha, beta, isMaximizingPlayer) {
+            const winningLines = checkWinningLinesForBoard(board); // Check for wins on the temporary board
+
+            if (winningLines.length > 0) {
+                // Evaluate the score based on who wins
+                const winningPlayer = board[winningLines[0][0].row][winningLines[0][0].col];
+                if (winningPlayer === 1) { // AI wins
+                    return 1000000; // High score for AI win
+                } else if (winningPlayer === 0) { // Human wins
+                    return -1000000; // Low score for human win
+                }
+            }
+
+            if (depth === 0 || isGridFullForBoard(board)) {
+                return evaluateBoard(board, 1); // Evaluate the board state for the AI (player 1)
+            }
+
+            const validLocations = getValidLocations(board);
+
+            if (isMaximizingPlayer) {
+                let maxEval = -Infinity;
+                for (const col of validLocations) {
+                    const row = getNextOpenRow(board, col);
+                    if (row !== null) {
+                        const tempBoard = board.map(arr => [...arr]);
+                        tempBoard[row][col] = 1; // AI's token
+                        const evaluation = minimax(tempBoard, depth - 1, alpha, beta, false);
+                        maxEval = Math.max(maxEval, evaluation);
+                        alpha = Math.max(alpha, maxEval);
+                        if (beta <= alpha) {
+                            break;
+                        }
+                    }
+                }
+                return maxEval;
+            } else {
+                let minEval = Infinity;
+                for (const col of validLocations) {
+                    const row = getNextOpenRow(board, col);
+                    if (row !== null) {
+                        const tempBoard = board.map(arr => [...arr]);
+                        tempBoard[row][col] = 0; // Human's token
+                        const evaluation = minimax(tempBoard, depth - 1, alpha, beta, true);
+                        minEval = Math.min(minEval, evaluation);
+                        beta = Math.min(beta, evaluation); // Corrected typo here
+                        if (beta <= alpha) {
+                            break;
+                        }
+                    }
+                }
+                return minEval;
+            }
+        }
+
+        // Helper functions for Minimax (operate on a given board state)
+        function getValidLocations(board) {
+            const validLocations = [];
+            for (let col = 0; col < 7; col++) {
+                if (board[0][col] === null) { // Check if the top row of the column is empty
+                    validLocations.push(col);
+                }
+            }
+            return validLocations;
+        }
+
+        function getNextOpenRow(board, col) {
+            for (let r = 5; r >= 0; r--) {
+                if (board[r][col] === null) {
+                    return r;
+                }
+            }
+            return null; // Column is full
+        }
+
+        function checkWinningLinesForBoard(board) {
+             let winningLines = [];
+
+            // Horizontal
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c <= 3; c++) {
+                    const player = board[r][c];
+                    if (player !== null && board[r][c + 1] !== null && board[r][c + 2] !== null && board[r][c + 3] !== null &&
+                        player === board[r][c + 1] && player === board[r][c + 2] && player === board[r][c + 3]) {
+                         winningLines.push([{row: r, col: c}, {row: r, col: c + 1}, {row: r, col: c + 2}, {row: r, col: c + 3}]);
+                    }
+                }
+            }
+
+            // Vertical
+            for (let c = 0; c < 7; c++) {
+                for (let r = 0; r <= 2; r++) {
+                    const player = board[r][c];
+                    if (player !== null && board[r + 1][c] !== null && board[r + 2][c] !== null && board[r + 3][c] !== null &&
+                        player === board[r + 1][c] && player === board[r + 2][c] && player === board[r + 3][c]) {
+                         winningLines.push([{row: r, col: c}, {row: r + 1, col: c}, {row: r + 2, col: c}, {row: r + 3, col: c}]);
+                    }
+                }
+            }
+
+            // Diagonal (positive slope)
+            for (let r = 0; r <= 2; r++) {
+                for (let c = 0; c <= 3; c++) {
+                    const player = board[r][c];
+                    if (player !== null && board[r + 1][c + 1] !== null && board[r + 2][c + 2] !== null && board[r + 3][c + 3] !== null &&
+                        player === board[r + 1][c + 1] && player === board[r + 2][c + 2] && player === board[r + 3][c + 3]) {
+                         winningLines.push([{row: r, col: c}, {row: r + 1, col: c + 1}, {row: r + 2, col: c + 2}, {row: r + 3, col: c + 3}]);
+                    }
+                }
+            }
+
+            // Diagonal (negative slope)
+            for (let r = 3; r < 6; r++) {
+                for (let c = 0; c <= 3; c++) {
+                     const player = board[r][c];
+                     if (player !== null && board[r - 1][c + 1] !== null && board[r - 2][c + 2] !== null && board[r - 3][c + 3] !== null &&
+                         player === board[r - 1][c + 1] && player === board[r - 2][c + 2] && player === board[r - 3][c + 3]) {
+                         winningLines.push([{row: r, col: c}, {row: r - 1, col: c + 1}, {row: r - 2, col: c + 2}, {row: r - 3, col: c + 3}]);
+                     }
+                }
+            }
+
+            return winningLines;
+        }
+
+         function isGridFullForBoard(board) {
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c < 7; c++) {
+                    if (board[r][c] === null) {
+                        return false; // Found an empty cell, grid is not full
+                    }
+                }
+            }
+            return true; // No empty cells found, grid is full
+        }
+
+        // Simple evaluation function for the board state
+        function evaluateBoard(board, player) {
+            let score = 0;
+            const opponent = 1 - player;
+
+            // Score center column preference
+            const centerColumn = board.map(row => row[3]);
+            const centerCount = centerColumn.filter(cell => cell === player).length;
+            score += centerCount * 3;
+
+            // Score horizontal, vertical, and diagonal windows of 4
+            score += scoreWindow(board, player, opponent);
+
+            return score;
+        }
+
+        function scoreWindow(board, player, opponent) {
+            let score = 0;
+
+            // Horizontal
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c <= 3; c++) {
+                    const window = board[r].slice(c, c + 4);
+                    score += evaluateWindow(window, player, opponent);
+                }
+            }
+
+            // Vertical
+            for (let c = 0; c < 7; c++) {
+                for (let r = 0; r <= 2; r++) {
+                    const window = [board[r][c], board[r + 1][c], board[r + 2][c], board[r + 3][c]];
+                    score += evaluateWindow(window, player, opponent);
+                }
+            }
+
+            // Diagonal (positive slope)
+            for (let r = 0; r <= 2; r++) {
+                for (let c = 0; c <= 3; c++) {
+                    const window = [board[r][c], board[r + 1][c + 1], board[r + 2][c + 2], board[r + 3][c + 3]];
+                    score += evaluateWindow(window, player, opponent);
+                }
+            }
+
+            // Diagonal (negative slope)
+            for (let r = 3; r < 6; r++) {
+                for (let c = 0; c <= 3; c++) {
+                    const window = [board[r][c], board[r - 1][c + 1], board[r - 2][c + 2], board[r - 3][c + 3]];
+                    score += evaluateWindow(window, player, opponent);
+                }
+            }
+
+            return score;
+        }
+
+        function evaluateWindow(window, player, opponent) {
+            let score = 0;
+            const playerCount = window.filter(cell => cell === player).length;
+            const emptyCount = window.filter(cell => cell === null).length;
+            const opponentCount = window.filter(cell => cell === opponent).length;
+
+            if (playerCount === 4) {
+                score += 100; // Winning move
+            } else if (playerCount === 3 && emptyCount === 1) {
+                score += 5; // Three in a row with one empty spot
+            } else if (playerCount === 2 && emptyCount === 2) {
+                score += 2; // Two in a row with two empty spots
+            }
+
+            if (opponentCount === 3 && emptyCount === 1) {
+                score -= 4; // Block opponent's potential win
+            }
+
+            return score;
+        }
+
+
+    </script>
+</body>
+</html>
