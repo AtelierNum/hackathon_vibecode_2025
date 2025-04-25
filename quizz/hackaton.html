@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Version: destroyer world (Complete - v2.4 - DOMContentLoaded Fix) -->
+    <title>Multiplayer Quiz Game - Full Feature Set</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .player-progress-bar {
+            height: 16px; background-color: #e5e7eb; margin-top: 4px;
+            border-radius: 0.5rem; position: relative; overflow: hidden;
+            flex-grow: 1; min-width: 50px;
+        }
+        .progress-bar-fill { height: 100%; background-color: #6b7280; width: 0; transition: width 0.5s ease; border-radius: 0.5rem; }
+
+        #timer-display { font-size: 1.5rem; font-weight: 700; color: #dc2626; margin-bottom: 1rem; text-align: center; height: 30px; }
+        #bet-container { margin-top: 1rem; margin-bottom: 1rem; text-align: center; display: none; }
+        #bet-checkbox { margin-right: 0.5rem; transform: scale(1.2); accent-color: #3b82f6; }
+        #bet-container label { font-weight: 500; color: #1f2937; cursor: pointer; }
+
+        .theme-square { background-color: #f3f4f6; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 1rem 1rem; text-align: center; font-weight: 600; color: #374151; cursor: pointer; transition: background-color 0.2s ease, transform 0.2s ease; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+        @media (min-width: 768px) { .theme-square { padding: 1.5rem 1rem; } }
+        .theme-square:hover { background-color: #e5e7eb; transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .theme-square[data-theme-name="Mystery"] { background-color: #d1fae5; border-color: #6ee7b7; color: #065f46; }
+        .theme-square[data-theme-name="Mystery"]:hover { background-color: #a7f3d0; }
+
+        #volume-control { position: fixed; top: 0.5rem; right: 0.5rem; background-color: rgba(255, 255, 255, 0.9); padding: 0.5rem; border-radius: 0.375rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); z-index: 50; display: flex; align-items: center; gap: 0.5rem; }
+        @media (min-width: 768px) { #volume-control { top: 1rem; right: 1rem; padding: 0.75rem; } }
+        #volume-control label { font-size: 0.75rem; font-weight: 500; color: #4b5563; }
+         @media (min-width: 768px) { #volume-control label { font-size: 0.875rem; } }
+        #volume-slider { width: 4rem; cursor: pointer; accent-color: #3b82f6; }
+        @media (min-width: 768px) { #volume-slider { width: 6rem; } }
+
+        #player-setup label { display: block; margin-bottom: 0.25rem; font-weight: 500; font-size: 0.875rem; color: #374151; /* Added color */ }
+        #player-setup input[type="number"], #player-setup input[type="text"] { /* Target both types */
+            width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem;
+            box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); /* Subtle shadow */
+            appearance: none; /* Removes default arrows for number input */
+        }
+        #player-setup input:focus { /* Improved focus state */
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px #bfdbfe;
+        }
+        #player-setup button { background-color: #10b981; color: white; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 0.375rem; width: 100%; transition: background-color 0.2s ease; cursor: pointer; border: none; font-size: 1rem; }
+        #player-setup button:hover { background-color: #059669; }
+        #player-names-container > div { margin-bottom: 1rem; } /* Spacing between player name inputs */
+
+        .answer-button { background-color: #f3f4f6; border: 1px solid #d1d5db; color: #374151; font-weight: 500; padding: 0.75rem 1rem; border-radius: 0.375rem; width: 100%; text-align: left; transition: background-color 0.2s ease; cursor: pointer; }
+         .answer-button:hover:not(:disabled) { background-color: #e5e7eb; }
+         .answer-button:disabled { opacity: 0.7; cursor: not-allowed; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div id="volume-control">
+        <label for="volume-slider">Vol:</label>
+        <input type="range" id="volume-slider" min="0" max="100" value="50">
+    </div>
+
+    <!-- Default Background Music -->
+    <audio id="background-audio" loop src="Quiz Craze.mp3">
+        Your browser does not support the audio element.
+    </audio>
+    <!-- High Priority Music (Change SRC!) -->
+    <audio id="high-priority-audio" loop src="High Voltage Chase.mp3"> <!-- !! REPLACE SRC !! -->
+        Your browser does not support the audio element.
+    </audio>
+
+    <!-- Main Game Container -->
+    <div class="bg-white p-4 sm:p-6 md:p-8 rounded-lg shadow-lg w-full max-w-4xl mx-auto">
+
+        <!-- Player Setup Section -->
+        <div id="player-setup">
+             <h1 class="text-xl md:text-2xl font-semibold mb-6 text-gray-800 text-center">Configuration de la partie</h1>
+            <div class="mb-4">
+                <label for="num-players" class="block mb-1 text-sm font-medium text-gray-700">Joueurs (2-4):</label>
+                <input type="number" id="num-players" name="num-players" min="2" max="4" value="2"> <!-- Removed appearance-none, using general style -->
+            </div>
+            <!-- Player Name Inputs Area -->
+            <div id="player-names-container" class="mb-6">
+                <!-- Player name inputs generated by JS -->
+            </div>
+            <button id="start-game-button">Commencer la partie</button>
+            <div id="setup-error" class="text-red-500 text-sm mt-4 text-center h-5"></div>
+        </div>
+
+        <!-- Main Game Area (Initially Hidden) -->
+        <div id="game-container" style="display: none;">
+             <h1 class="text-xl md:text-2xl font-semibold mb-4 text-gray-800 text-center">Quiz Multijoueur</h1>
+            <div id="timer-display" class="mb-4"></div>
+            <div id="players-container" class="mb-6 space-y-3"></div>
+            <div id="bet-container"><input type="checkbox" id="bet-checkbox" name="bet"><label for="bet-checkbox">Quitte ou Double?</label></div>
+            <div id="question-container" class="mb-6"></div>
+            <div id="theme-selection" class="mb-6 grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4"></div>
+            <button id="next-question-button" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md w-full transition duration-300 ease-in-out text-base md:text-lg mt-4" style="display: none;">Tour Suivant</button>
+            <div id="message-box" class="mt-6 text-center text-gray-600 font-medium min-h-[2.5em]"></div>
+        </div>
+    </div>
+
+    <script>
+        // Version: destroyer world (Complete - v2.4 - DOMContentLoaded Fix)
+        console.log("Script starting...");
+
+        // --- Device Detection ---
+        function isMobileDevice() {
+            let check = navigator.maxTouchPoints !== undefined && navigator.maxTouchPoints > 0;
+             if (!check) { check = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); }
+             console.log("Is mobile:", check);
+             return check;
+        }
+
+        // --- Game Config ---
+        let players = [];
+        const themes = [
+          { name: "Culture Générale", questions: [ { text: "Quelle est la capitale de la France ?", options: ["Paris", "Londres", "Rome"], correctAnswer: "Paris" }, { text: "Quel est le plus grand océan du monde ?", options: ["Atlantique", "Indien", "Pacifique"], correctAnswer: "Pacifique" }, { text: "Quelle langue est la plus parlée au monde ?", options: ["Anglais", "Chinois", "Espagnol"], correctAnswer: "Chinois" }, { text: "Combien de continents y a-t-il ?", options: ["5", "6", "7"], correctAnswer: "7" }, { text: "Quel pays a le plus d'habitants ?", options: ["Inde", "Chine", "États-Unis"], correctAnswer: "Chine" }, { text: "Quel est le plus long fleuve du monde ?", options: ["Nil", "Amazone", "Mississippi"], correctAnswer: "Amazone" }, { text: "Dans quel pays se trouve la Tour Eiffel ?", options: ["Italie", "Espagne", "France"], correctAnswer: "France" }, { text: "Quel est le plus grand désert du monde ?", options: ["Gobi", "Sahara", "Antarctique"], correctAnswer: "Antarctique" }, { text: "Qui a peint la Joconde ?", options: ["Picasso", "Léonard de Vinci", "Van Gogh"], correctAnswer: "Léonard de Vinci" }, { text: "Quel est le pays d’origine des pizzas ?", options: ["France", "Italie", "Grèce"], correctAnswer: "Italie" } ] },
+          { name: "Sciences", questions: [ { text: "Quel est le symbole chimique de l'eau ?", options: ["H2O", "O2", "CO2"], correctAnswer: "H2O" }, { text: "Combien de planètes dans le système solaire ?", options: ["7", "8", "9"], correctAnswer: "8" }, { text: "Quelle planète est surnommée la planète rouge ?", options: ["Vénus", "Mars", "Jupiter"], correctAnswer: "Mars" }, { text: "Combien de dents possède un adulte ?", options: ["32", "30", "28"], correctAnswer: "32" }, { text: "Quel gaz respire-t-on ?", options: ["Hydrogène", "Dioxyde de carbone", "Oxygène"], correctAnswer: "Oxygène" }, { text: "Combien de pattes a une araignée ?", options: ["6", "8", "10"], correctAnswer: "8" }, { text: "À quelle température l'eau gèle-t-elle ?", options: ["0°C", "100°C", "-10°C"], correctAnswer: "0°C" }, { text: "Quel est l’organe principal du système nerveux ?", options: ["Cœur", "Foie", "Cerveau"], correctAnswer: "Cerveau" }, { text: "Quel est l’élément chimique représenté par le symbole Fe ?", options: ["Fer", "Fluor", "Francium"], correctAnswer: "Fer" }, { text: "Combien de chromosomes possède un humain ?", options: ["42", "46", "48"], correctAnswer: "46" } ] },
+          { name: "Histoire", questions: [ { text: "En quelle année a eu lieu la Révolution française ?", options: ["1789", "1815", "1848"], correctAnswer: "1789" }, { text: "Qui était le premier président des États-Unis ?", options: ["Abraham Lincoln", "George Washington", "Thomas Jefferson"], correctAnswer: "George Washington" }, { text: "Quel empire a construit le Colisée ?", options: ["Grec", "Égyptien", "Romain"], correctAnswer: "Romain" }, { text: "Quelle guerre a eu lieu de 1939 à 1945 ?", options: ["Guerre de Sécession", "Première Guerre mondiale", "Seconde Guerre mondiale"], correctAnswer: "Seconde Guerre mondiale" }, { text: "Qui était Napoléon Bonaparte ?", options: ["Peintre", "Empereur", "Scientifique"], correctAnswer: "Empereur" }, { text: "Quel mur est tombé en 1989 ?", options: ["Mur de Chine", "Mur de Berlin", "Mur d’Hadrien"], correctAnswer: "Mur de Berlin" }, { text: "Où a eu lieu le débarquement du 6 juin 1944 ?", options: ["Normandie", "Bretagne", "Provence"], correctAnswer: "Normandie" }, { text: "Quel peuple a inventé l’écriture ?", options: ["Romains", "Sumériens", "Égyptiens"], correctAnswer: "Sumériens" }, { text: "Qui a découvert l’Amérique ?", options: ["Marco Polo", "Christophe Colomb", "Magellan"], correctAnswer: "Christophe Colomb" }, { text: "Quel roi a été guillotiné pendant la Révolution française ?", options: ["Louis XIV", "Louis XVI", "Louis XVIII"], correctAnswer: "Louis XVI" } ] },
+          { name: "Géographie", questions: [ { text: "Quel est le plus haut sommet du monde ?", options: ["K2", "Mont Everest", "Mont Blanc"], correctAnswer: "Mont Everest" }, { text: "Quel pays est en forme de botte ?", options: ["Espagne", "Grèce", "Italie"], correctAnswer: "Italie" }, { text: "Quel est le plus grand pays du monde ?", options: ["Canada", "Chine", "Russie"], correctAnswer: "Russie" }, { text: "Quel est le plus grand lac d’Afrique ?", options: ["Tchad", "Victoria", "Tanganyika"], correctAnswer: "Victoria" }, { text: "Dans quel pays se trouve le Kilimandjaro ?", options: ["Kenya", "Tanzanie", "Ouganda"], correctAnswer: "Tanzanie" }, { text: "Quel est le désert le plus chaud du monde ?", options: ["Sahara", "Gobi", "Kalahari"], correctAnswer: "Sahara" }, { text: "Quelle mer borde la France au sud ?", options: ["Mer du Nord", "Méditerranée", "Baltique"], correctAnswer: "Méditerranée" }, { text: "Quelle est la capitale de l’Australie ?", options: ["Sydney", "Melbourne", "Canberra"], correctAnswer: "Canberra" }, { text: "Combien de pays composent l’Union Européenne ?", options: ["27", "28", "26"], correctAnswer: "27" }, { text: "Quel est le plus petit pays du monde ?", options: ["Monaco", "Saint-Marin", "Vatican"], correctAnswer: "Vatican" } ] },
+          { name: "Mathématiques", questions: [ { text: "Combien font 7 x 8 ?", options: ["56", "64", "48"], correctAnswer: "56" }, { text: "Quel est le carré de 9 ?", options: ["81", "72", "99"], correctAnswer: "81" }, { text: "Quel est le nombre premier entre 10 et 20 ?", options: ["14", "17", "18"], correctAnswer: "17" }, { text: "Combien de côtés a un hexagone ?", options: ["5", "6", "7"], correctAnswer: "6" }, { text: "Quel est le résultat de 100 ÷ 4 ?", options: ["20", "25", "30"], correctAnswer: "25" }, { text: "Quelle est la racine carrée de 144 ?", options: ["11", "12", "13"], correctAnswer: "12" }, { text: "Combien font 15 + 27 ?", options: ["42", "52", "44"], correctAnswer: "42" }, { text: "Combien y a-t-il de degrés dans un angle droit ?", options: ["45", "90", "180"], correctAnswer: "90" }, { text: "Combien font 9 x 6 ?", options: ["54", "64", "46"], correctAnswer: "54" }, { text: "Quel est le périmètre d’un carré de côté 5 cm ?", options: ["10 cm", "20 cm", "25 cm"], correctAnswer: "20 cm" } ] },
+          { name: "Musique", questions: [ { text: "Quel compositeur est connu pour la Symphonie n°9 ?", options: ["Mozart", "Beethoven", "Bach"], correctAnswer: "Beethoven" }, { text: "Quel artiste a chanté 'Thriller' ?", options: ["Prince", "Michael Jackson", "Stevie Wonder"], correctAnswer: "Michael Jackson" }, { text: "Quel est l’instrument principal d’un pianiste ?", options: ["Piano", "Guitare", "Batterie"], correctAnswer: "Piano" }, { text: "Quel style musical est associé à Bob Marley ?", options: ["Rock", "Reggae", "Jazz"], correctAnswer: "Reggae" }, { text: "Quel chanteur français est surnommé 'le Taulier' ?", options: ["Johnny Hallyday", "Claude François", "Jean-Jacques Goldman"], correctAnswer: "Johnny Hallyday" }, { text: "Quel groupe a chanté 'Bohemian Rhapsody' ?", options: ["The Beatles", "Queen", "Pink Floyd"], correctAnswer: "Queen" }, { text: "Quel est le symbole de la musique ?", options: ["Clé de sol", "Note", "Partition"], correctAnswer: "Clé de sol" }, { text: "Quel chanteur est connu pour 'Formidable' ?", options: ["Stromae", "Maître Gims", "Orelsan"], correctAnswer: "Stromae" }, { text: "Quel instrument a des cordes et un archet ?", options: ["Guitare", "Violoncelle", "Flûte"], correctAnswer: "Violoncelle" }, { text: "Quel festival de musique a lieu à Belfort ?", options: ["Les Vieilles Charrues", "Eurockéennes", "Hellfest"], correctAnswer: "Eurockéennes" } ] },
+          { name: "Cinéma", questions: [ { text: "Qui a réalisé 'Titanic' ?", options: ["Steven Spielberg", "James Cameron", "Christopher Nolan"], correctAnswer: "James Cameron" }, { text: "Quel acteur incarne Harry Potter ?", options: ["Elijah Wood", "Daniel Radcliffe", "Rupert Grint"], correctAnswer: "Daniel Radcliffe" }, { text: "Quel film français a remporté l’Oscar du Meilleur Film Étranger en 2012 ?", options: ["Intouchables", "Amour", "The Artist"], correctAnswer: "Amour" }, { text: "Quel est le nom du clown dans 'Ça' ?", options: ["Bozo", "Pennywise", "Ronald"], correctAnswer: "Pennywise" }, { text: "Quel est le nom du personnage principal dans 'Gladiator' ?", options: ["Maximus", "Julius", "Marcus"], correctAnswer: "Maximus" }, { text: "Quel studio a produit 'Toy Story' ?", options: ["DreamWorks", "Pixar", "Universal"], correctAnswer: "Pixar" }, { text: "Dans quel film entend-on 'Je suis ton père' ?", options: ["Star Trek", "Star Wars", "Matrix"], correctAnswer: "Star Wars" }, { text: "Quel film de Luc Besson met en scène une tueuse nommée Mathilda ?", options: ["Léon", "Nikita", "Taxi"], correctAnswer: "Léon" }, { text: "Qui joue le Joker dans 'The Dark Knight' ?", options: ["Jared Leto", "Heath Ledger", "Joaquin Phoenix"], correctAnswer: "Heath Ledger" }, { text: "Quel est le titre du premier film Marvel avec Iron Man ?", options: ["Iron Man", "Avengers", "Captain America"], correctAnswer: "Iron Man" } ] },
+          { name: "Littérature", questions: [ { text: "Qui a écrit 'Les Misérables' ?", options: ["Victor Hugo", "Émile Zola", "Gustave Flaubert"], correctAnswer: "Victor Hugo" }, { text: "Qui est l’auteur de 'Harry Potter' ?", options: ["J.K. Rowling", "Stephen King", "Suzanne Collins"], correctAnswer: "J.K. Rowling" }, { text: "Quel est le héros de l’Iliade ?", options: ["Ulysse", "Achille", "Hector"], correctAnswer: "Achille" }, { text: "Quel livre commence par 'Longtemps, je me suis couché de bonne heure' ?", options: ["Madame Bovary", "À la recherche du temps perdu", "Le Rouge et le Noir"], correctAnswer: "À la recherche du temps perdu" }, { text: "Quel auteur a écrit 'Le Petit Prince' ?", options: ["Saint-Exupéry", "Verlaine", "Camus"], correctAnswer: "Saint-Exupéry" }, { text: "Qui est l’auteur de '1984' ?", options: ["Orwell", "Huxley", "Kafka"], correctAnswer: "Orwell" }, { text: "Dans quel livre trouve-t-on le personnage de Jean Valjean ?", options: ["Germinal", "Les Misérables", "Le Comte de Monte-Cristo"], correctAnswer: "Les Misérables" }, { text: "Quel roman de Camus parle d’un meurtre sur une plage ?", options: ["L'Étranger", "La Peste", "Le Mythe de Sisyphe"], correctAnswer: "L'Étranger" }, { text: "Qui a écrit 'Cyrano de Bergerac' ?", options: ["Rostand", "Molière", "Hugo"], correctAnswer: "Rostand" }, { text: "Quel roman commence dans un orphelinat et se termine sur un ring de boxe ?", options: ["Le Vieil Homme et la Mer", "L'Attrape-cœurs", "Des souris et des hommes"], correctAnswer: "Des souris et des hommes" } ] },
+          { name: "Sport", questions: [ { text: "Combien de joueurs dans une équipe de football ?", options: ["9", "10", "11"], correctAnswer: "11" }, { text: "Quel pays a gagné la Coupe du Monde 2018 ?", options: ["Brésil", "France", "Allemagne"], correctAnswer: "France" }, { text: "Combien de points pour un essai au rugby ?", options: ["3", "5", "7"], correctAnswer: "5" }, { text: "Quel joueur est surnommé 'King James' ?", options: ["Kobe Bryant", "Michael Jordan", "LeBron James"], correctAnswer: "LeBron James" }, { text: "Combien de grands chelems dans une année de tennis ?", options: ["3", "4", "5"], correctAnswer: "4" }, { text: "Quel coureur cycliste a gagné 5 Tours de France ?", options: ["Chris Froome", "Bernard Hinault", "Eddy Merckx"], correctAnswer: "Eddy Merckx" }, { text: "Quelle discipline se pratique avec un sabre ?", options: ["Judo", "Escrime", "Boxe"], correctAnswer: "Escrime" }, { text: "Quel sport se joue avec un volant ?", options: ["Squash", "Badminton", "Tennis de table"], correctAnswer: "Badminton" }, { text: "Où ont eu lieu les JO 2020 (en 2021) ?", options: ["Paris", "Tokyo", "Pékin"], correctAnswer: "Tokyo" }, { text: "Quel sportif a remporté 23 titres du Grand Chelem ?", options: ["Serena Williams", "Roger Federer", "Nadal"], correctAnswer: "Serena Williams" } ] },
+          { name: "Informatique", questions: [ { text: "Que veut dire HTML ?", options: ["HyperText Markup Language", "HighText Machine Language", "HyperTool Multi Language"], correctAnswer: "HyperText Markup Language" }, { text: "Quel langage est utilisé pour créer des pages web interactives ?", options: ["Python", "Java", "JavaScript"], correctAnswer: "JavaScript" }, { text: "Que signifie 'URL' ?", options: ["Uniform Resource Locator", "User Request Link", "Universal Routing Language"], correctAnswer: "Uniform Resource Locator" }, { text: "Quel système d’exploitation est développé par Microsoft ?", options: ["Linux", "Windows", "macOS"], correctAnswer: "Windows" }, { text: "Quel est l’abréviation de l’intelligence artificielle ?", options: ["AI", "IA", "IT"], correctAnswer: "IA" }, { text: "Que veut dire 'CPU' ?", options: ["Central Processing Unit", "Control Program Utility", "Computer Program Unit"], correctAnswer: "Central Processing Unit" }, { text: "Quel est le langage le plus utilisé pour les applications mobiles Android ?", options: ["Kotlin", "Swift", "Ruby"], correctAnswer: "Kotlin" }, { text: "Que fait un antivirus ?", options: ["Il crée des virus", "Il protège l’ordinateur", "Il nettoie l’écran"], correctAnswer: "Il protège l’ordinateur" }, { text: "Quelle entreprise a créé l’iPhone ?", options: ["Google", "Apple", "Samsung"], correctAnswer: "Apple" }, { text: "Quel moteur de recherche est le plus utilisé ?", options: ["Bing", "Yahoo", "Google"], correctAnswer: "Google" } ] },
+          { name: "Mystery", questions: [] }
+        ];
+        const pointsPerCorrectAnswer = 10;
+        const malusPoints = 10;
+        const scoreThresholdForMusicChange = 80;
+        const maxScore = 100;
+        // Time Limit Configuration
+        const baseQuestionTimeLimit = 20; // Base time in seconds
+        const timeReductionPerPoint = 0.2; // Seconds to reduce per point scored
+        const minQuestionTimeLimit = 7;   // Minimum time allowed (seconds)
+        // ---
+        const answerSwapTime = 2000;
+       
+        
+        // *** MULTI-LANGUAGE TRANSLATIONS ***
+        // !! MACHINE TRANSLATED - REVIEW NEEDED !!
+        // !! KEYS MUST EXACTLY MATCH FRENCH TEXT ABOVE !!
+             // *** MULTI-LANGUAGE TRANSLATIONS (Populated) ***
+        // !! MACHINE TRANSLATED - REVIEW NEEDED !!
+        // !! KEYS MUST EXACTLY MATCH FRENCH TEXT IN 'themes' ARRAY !!
+        const translations = {
+            'es': { // Spanish
+                // Culture Générale
+                "Quelle est la capitale de la France ?": "¿Cuál es la capital de Francia?", "Paris": "París", "Londres": "Londres", "Rome": "Roma",
+                "Quel est le plus grand océan du monde ?": "¿Cuál es el océano más grande del mundo?", "Atlantique": "Atlántico", "Indien": "Índico", "Pacifique": "Pacífico",
+                "Quelle langue est la plus parlée au monde ?": "¿Qué idioma es el más hablado en el mundo?", "Anglais": "Inglés", "Chinois": "Chino", "Espagnol": "Español",
+                "Combien de continents y a-t-il ?": "¿Cuántos continentes hay?", "5": "5", "6": "6", "7": "7",
+                "Quel pays a le plus d'habitants ?": "¿Qué país tiene más habitantes?", "Inde": "India", "Chine": "China", "États-Unis": "Estados Unidos",
+                "Quel est le plus long fleuve du monde ?": "¿Cuál es el río más largo del mundo?", "Nil": "Nilo", "Amazone": "Amazonas", "Mississippi": "Misisipi",
+                "Dans quel pays se trouve la Tour Eiffel ?": "¿En qué país se encuentra la Torre Eiffel?", "Italie": "Italia", "Espagne": "España", "France": "Francia",
+                "Quel est le plus grand désert du monde ?": "¿Cuál es el desierto más grande del mundo?", "Gobi": "Gobi", "Sahara": "Sahara", "Antarctique": "Antártico",
+                "Qui a peint la Joconde ?": "¿Quién pintó la Mona Lisa?", "Picasso": "Picasso", "Léonard de Vinci": "Leonardo da Vinci", "Van Gogh": "Van Gogh",
+                "Quel est le pays d’origine des pizzas ?": "¿Cuál es el país de origen de las pizzas?", "Grèce": "Grecia",
+                // Sciences
+                "Quel est le symbole chimique de l'eau ?": "¿Cuál es el símbolo químico del agua?", "H2O": "H2O", "O2": "O2", "CO2": "CO2",
+                "Combien de planètes dans le système solaire ?": "¿Cuántos planetas hay en el sistema solar?", "8": "8", "9": "9",
+                "Quelle planète est surnommée la planète rouge ?": "¿Qué planeta es apodado el planeta rojo?", "Vénus": "Venus", "Mars": "Marte", "Jupiter": "Júpiter",
+                "Combien de dents possède un adulte ?": "¿Cuántos dientes tiene un adulto?", "32": "32", "30": "30", "28": "28",
+                "Quel gaz respire-t-on ?": "¿Qué gas respiramos?", "Hydrogène": "Hidrógeno", "Dioxyde de carbone": "Dióxido de carbono", "Oxygène": "Oxígeno",
+                "Combien de pattes a une araignée ?": "¿Cuántas patas tiene una araña?", "10": "10",
+                "À quelle température l'eau gèle-t-elle ?": "¿A qué temperatura se congela el agua?", "0°C": "0°C", "100°C": "100°C", "-10°C": "-10°C",
+                "Quel est l’organe principal du système nerveux ?": "¿Cuál es el órgano principal del sistema nervioso?", "Cœur": "Corazón", "Foie": "Hígado", "Cerveau": "Cerebro",
+                "Quel est l’élément chimique représenté par le symbole Fe ?": "¿Qué elemento químico representa el símbolo Fe?", "Fer": "Hierro", "Fluor": "Flúor", "Francium": "Francio",
+                "Combien de chromosomes possède un humain ?": "¿Cuántos cromosomas tiene un humano?", "42": "42", "46": "46", "48": "48",
+                // Histoire
+                "En quelle année a eu lieu la Révolution française ?": "¿En qué año tuvo lugar la Revolución Francesa?", "1789": "1789", "1815": "1815", "1848": "1848",
+                "Qui était le premier président des États-Unis ?": "¿Quién fue el primer presidente de los Estados Unidos?", "Abraham Lincoln": "Abraham Lincoln", "George Washington": "George Washington", "Thomas Jefferson": "Thomas Jefferson",
+                "Quel empire a construit le Colisée ?": "¿Qué imperio construyó el Coliseo?", "Grec": "Griego", "Égyptien": "Egipcio", "Romain": "Romano",
+                "Quelle guerre a eu lieu de 1939 à 1945 ?": "¿Qué guerra tuvo lugar de 1939 a 1945?", "Guerre de Sécession": "Guerra de Secesión", "Première Guerre mondiale": "Primera Guerra Mundial", "Seconde Guerre mondiale": "Segunda Guerra Mundial",
+                "Qui était Napoléon Bonaparte ?": "¿Quién fue Napoleón Bonaparte?", "Peintre": "Pintor", "Empereur": "Emperador", "Scientifique": "Científico",
+                "Quel mur est tombé en 1989 ?": "¿Qué muro cayó en 1989?", "Mur de Chine": "Muralla China", "Mur de Berlin": "Muro de Berlín", "Mur d’Hadrien": "Muro de Adriano",
+                "Où a eu lieu le débarquement du 6 juin 1944 ?": "¿Dónde tuvo lugar el desembarco del 6 de junio de 1944?", "Normandie": "Normandía", "Bretagne": "Bretaña", "Provence": "Provenza",
+                "Quel peuple a inventé l’écriture ?": "¿Qué pueblo inventó la escritura?", "Romains": "Romanos", "Sumériens": "Sumerios", "Égyptiens": "Egipcios",
+                "Qui a découvert l’Amérique ?": "¿Quién descubrió América?", "Marco Polo": "Marco Polo", "Christophe Colomb": "Cristóbal Colón", "Magellan": "Magallanes",
+                "Quel roi a été guillotiné pendant la Révolution française ?": "¿Qué rey fue guillotinado durante la Revolución Francesa?", "Louis XIV": "Luis XIV", "Louis XVI": "Luis XVI", "Louis XVIII": "Luis XVIII",
+                // Géographie
+                "Quel est le plus haut sommet du monde ?": "¿Cuál es la cumbre más alta del mundo?", "K2":"K2", "Mont Everest":"Monte Everest", "Mont Blanc":"Mont Blanc",
+                "Quel pays est en forme de botte ?": "¿Qué país tiene forma de bota?", "Espagne":"España", "Grèce":"Grecia", "Italie":"Italia",
+                "Quel est le plus grand pays du monde ?": "¿Cuál es el país más grande del mundo?", "Canada":"Canadá", "Chine":"China", "Russie":"Rusia",
+                "Quel est le plus grand lac d’Afrique ?": "¿Cuál es el lago más grande de África?", "Tchad":"Chad", "Victoria":"Victoria", "Tanganyika":"Tanganica",
+                "Dans quel pays se trouve le Kilimandjaro ?": "¿En qué país se encuentra el Kilimanjaro?", "Kenya":"Kenia", "Tanzanie":"Tanzania", "Ouganda":"Uganda",
+                "Quel est le désert le plus chaud du monde ?": "¿Cuál es el desierto más cálido del mundo?", "Gobi":"Gobi", "Kalahari":"Kalahari",
+                "Quelle mer borde la France au sud ?": "¿Qué mar baña Francia por el sur?", "Mer du Nord":"Mar del Norte", "Méditerranée":"Mediterráneo", "Baltique":"Báltico",
+                "Quelle est la capitale de l’Australie ?": "¿Cuál es la capital de Australia?", "Sydney":"Sídney", "Melbourne":"Melbourne", "Canberra":"Canberra",
+                "Combien de pays composent l’Union Européenne ?": "¿Cuántos países componen la Unión Europea?", "26":"26",
+                "Quel est le plus petit pays du monde ?": "¿Cuál es el país más pequeño del mundo?", "Monaco":"Mónaco", "Saint-Marin":"San Marino", "Vatican":"Vaticano",
+                 // Mathématiques
+                "Combien font 7 x 8 ?": "¿Cuánto es 7 x 8?", "56": "56", "64": "64", "48": "48",
+                "Quel est le carré de 9 ?": "¿Cuál es el cuadrado de 9?", "81": "81", "72": "72", "99": "99",
+                "Quel est le nombre premier entre 10 et 20 ?": "¿Cuál es el número primo entre 10 y 20?", "14": "14", "17": "17", "18": "18",
+                "Combien de côtés a un hexagone ?": "¿Cuántos lados tiene un hexágono?",
+                "Quel est le résultat de 100 ÷ 4 ?": "¿Cuál es el resultado de 100 ÷ 4?", "20": "20", "25": "25", "30": "30",
+                "Quelle est la racine carrée de 144 ?": "¿Cuál es la raíz cuadrada de 144?", "11": "11", "12": "12", "13": "13",
+                "Combien font 15 + 27 ?": "¿Cuánto es 15 + 27?", "52": "52", "44": "44",
+                "Combien y a-t-il de degrés dans un angle droit ?": "¿Cuántos grados hay en un ángulo recto?", "45": "45", "90": "90", "180": "180",
+                "Combien font 9 x 6 ?": "¿Cuánto es 9 x 6?", "54": "54",
+                "Quel est le périmètre d’un carré de côté 5 cm ?": "¿Cuál es el perímetro de un cuadrado de lado 5 cm?", "10 cm": "10 cm", "20 cm": "20 cm", "25 cm": "25 cm",
+                // Musique
+                "Quel compositeur est connu pour la Symphonie n°9 ?": "¿Qué compositor es conocido por la Sinfonía n°9?", "Mozart": "Mozart", "Beethoven": "Beethoven", "Bach": "Bach",
+                "Quel artiste a chanté 'Thriller' ?": "¿Qué artista cantó 'Thriller'?", "Prince": "Prince", "Michael Jackson": "Michael Jackson", "Stevie Wonder": "Stevie Wonder",
+                "Quel est l’instrument principal d’un pianiste ?": "¿Cuál es el instrumento principal de un pianista?", "Piano": "Piano", "Guitare": "Guitarra", "Batterie": "Batería",
+                "Quel style musical est associé à Bob Marley ?": "¿Qué estilo musical se asocia con Bob Marley?", "Rock": "Rock", "Reggae": "Reggae", "Jazz": "Jazz",
+                "Quel chanteur français est surnommé 'le Taulier' ?": "¿Qué cantante francés es apodado 'le Taulier'?", "Johnny Hallyday": "Johnny Hallyday", "Claude François": "Claude François", "Jean-Jacques Goldman": "Jean-Jacques Goldman",
+                "Quel groupe a chanté 'Bohemian Rhapsody' ?": "¿Qué grupo cantó 'Bohemian Rhapsody'?", "The Beatles": "The Beatles", "Queen": "Queen", "Pink Floyd": "Pink Floyd",
+                "Quel est le symbole de la musique ?": "¿Cuál es el símbolo de la música?", "Clé de sol": "Clave de sol", "Note": "Nota", "Partition": "Partitura",
+                "Quel chanteur est connu pour 'Formidable' ?": "¿Qué cantante es conocido por 'Formidable'?", "Stromae": "Stromae", "Maître Gims": "Maître Gims", "Orelsan": "Orelsan",
+                "Quel instrument a des cordes et un archet ?": "¿Qué instrumento tiene cuerdas y un arco?", "Violoncelle": "Violonchelo", "Flûte": "Flauta",
+                "Quel festival de musique a lieu à Belfort ?": "¿Qué festival de música tiene lugar en Belfort?", "Les Vieilles Charrues": "Les Vieilles Charrues", "Eurockéennes": "Eurockéennes", "Hellfest": "Hellfest",
+                // Cinéma
+                "Qui a réalisé 'Titanic' ?": "¿Quién dirigió 'Titanic'?", "Steven Spielberg": "Steven Spielberg", "James Cameron": "James Cameron", "Christopher Nolan": "Christopher Nolan",
+                "Quel acteur incarne Harry Potter ?": "¿Qué actor interpreta a Harry Potter?", "Elijah Wood": "Elijah Wood", "Daniel Radcliffe": "Daniel Radcliffe", "Rupert Grint": "Rupert Grint",
+                "Quel film français a remporté l’Oscar du Meilleur Film Étranger en 2012 ?": "¿Qué película francesa ganó el Oscar a la Mejor Película Extranjera en 2012?", "Intouchables": "Intocable", "Amour": "Amor", "The Artist": "El Artista",
+                "Quel est le nom du clown dans 'Ça' ?": "¿Cómo se llama el payaso en 'It'?", "Bozo": "Bozo", "Pennywise": "Pennywise", "Ronald": "Ronald",
+                "Quel est le nom du personnage principal dans 'Gladiator' ?": "¿Cuál es el nombre del personaje principal en 'Gladiator'?", "Maximus": "Máximo", "Julius": "Julio", "Marcus": "Marco",
+                "Quel studio a produit 'Toy Story' ?": "¿Qué estudio produjo 'Toy Story'?", "DreamWorks": "DreamWorks", "Pixar": "Pixar", "Universal": "Universal",
+                "Dans quel film entend-on 'Je suis ton père' ?": "¿En qué película se oye 'Yo soy tu padre'?", "Star Trek": "Star Trek", "Star Wars": "La Guerra de las Galaxias", "Matrix": "Matrix",
+                "Quel film de Luc Besson met en scène une tueuse nommée Mathilda ?": "¿Qué película de Luc Besson presenta a una asesina llamada Mathilda?", "Léon": "Léon (El profesional)", "Nikita": "Nikita", "Taxi": "Taxi",
+                "Qui joue le Joker dans 'The Dark Knight' ?": "¿Quién interpreta al Joker en 'The Dark Knight'?", "Jared Leto": "Jared Leto", "Heath Ledger": "Heath Ledger", "Joaquin Phoenix": "Joaquin Phoenix",
+                "Quel est le titre du premier film Marvel avec Iron Man ?": "¿Cuál es el título de la primera película de Marvel con Iron Man?", "Iron Man": "Iron Man", "Avengers": "Los Vengadores", "Captain America": "Capitán América",
+                // Littérature
+                "Qui a écrit 'Les Misérables' ?": "¿Quién escribió 'Los Miserables'?", "Victor Hugo": "Victor Hugo", "Émile Zola": "Émile Zola", "Gustave Flaubert": "Gustave Flaubert",
+                "Qui est l’auteur de 'Harry Potter' ?": "¿Quién es el autor de 'Harry Potter'?", "J.K. Rowling": "J.K. Rowling", "Stephen King": "Stephen King", "Suzanne Collins": "Suzanne Collins",
+                "Quel est le héros de l’Iliade ?": "¿Quién es el héroe de la Ilíada?", "Ulysse": "Ulises", "Achille": "Aquiles", "Hector": "Héctor",
+                "Quel livre commence par 'Longtemps, je me suis couché de bonne heure' ?": "¿Qué libro comienza con 'Durante mucho tiempo, me acosté temprano'?", "Madame Bovary": "Madame Bovary", "À la recherche du temps perdu": "En busca del tiempo perdido", "Le Rouge et le Noir": "Rojo y Negro",
+                "Quel auteur a écrit 'Le Petit Prince' ?": "¿Qué autor escribió 'El Principito'?", "Saint-Exupéry": "Saint-Exupéry", "Verlaine": "Verlaine", "Camus": "Camus",
+                "Qui est l’auteur de '1984' ?": "¿Quién es el autor de '1984'?", "Orwell": "Orwell", "Huxley": "Huxley", "Kafka": "Kafka",
+                "Dans quel livre trouve-t-on le personnage de Jean Valjean ?": "¿En qué libro se encuentra el personaje de Jean Valjean?", "Germinal": "Germinal", "Les Misérables": "Los Miserables", "Le Comte de Monte-Cristo": "El Conde de Montecristo",
+                "Quel roman de Camus parle d’un meurtre sur une plage ?": "¿Qué novela de Camus habla de un asesinato en una playa?", "L'Étranger": "El Extranjero", "La Peste": "La Peste", "Le Mythe de Sisyphe": "El Mito de Sísifo",
+                "Qui a écrit 'Cyrano de Bergerac' ?": "¿Quién escribió 'Cyrano de Bergerac'?", "Rostand": "Rostand", "Molière": "Molière", "Hugo": "Hugo",
+                "Quel roman commence dans un orphelinat et se termine sur un ring de boxe ?": "¿Qué novela comienza en un orfanato y termina en un ring de boxeo?", "Le Vieil Homme et la Mer": "El viejo y el mar", "L'Attrape-cœurs": "El guardián entre el centeno", "Des souris et des hommes": "De ratones y hombres",
+                // Sport
+                "Combien de joueurs dans une équipe de football ?": "¿Cuántos jugadores hay en un equipo de fútbol?", "9": "9",
+                "Quel pays a gagné la Coupe du Monde 2018 ?": "¿Qué país ganó la Copa del Mundo 2018?", "Brésil": "Brasil", "Allemagne": "Alemania",
+                "Combien de points pour un essai au rugby ?": "¿Cuántos puntos vale un ensayo en rugby?",
+                "Quel joueur est surnommé 'King James' ?": "¿Qué jugador es apodado 'King James'?", "Kobe Bryant": "Kobe Bryant", "Michael Jordan": "Michael Jordan", "LeBron James": "LeBron James",
+                "Combien de grands chelems dans une année de tennis ?": "¿Cuántos Grand Slams hay en un año de tenis?", "3": "3", "4": "4",
+                "Quel coureur cycliste a gagné 5 Tours de France ?": "¿Qué ciclista ha ganado 5 Tours de Francia?", "Chris Froome": "Chris Froome", "Bernard Hinault": "Bernard Hinault", "Eddy Merckx": "Eddy Merckx",
+                "Quelle discipline se pratique avec un sabre ?": "¿Qué disciplina se practica con un sable?", "Judo": "Judo", "Escrime": "Esgrima", "Boxe": "Boxeo",
+                "Quel sport se joue avec un volant ?": "¿Qué deporte se juega con un volante?", "Squash": "Squash", "Badminton": "Bádminton", "Tennis de table": "Tenis de mesa",
+                "Où ont eu lieu les JO 2020 (en 2021) ?": "¿Dónde tuvieron lugar los Juegos Olímpicos de 2020 (en 2021)?", "Pékin": "Pekín",
+                "Quel sportif a remporté 23 titres du Grand Chelem ?": "¿Qué deportista ha ganado 23 títulos de Grand Slam?", "Serena Williams": "Serena Williams", "Roger Federer": "Roger Federer", "Nadal": "Nadal",
+                // Informatique
+                "Que veut dire HTML ?": "¿Qué significa HTML?", "HyperText Markup Language": "HyperText Markup Language", "HighText Machine Language": "HighText Machine Language", "HyperTool Multi Language": "HyperTool Multi Language",
+                "Quel langage est utilisé pour créer des pages web interactives ?": "¿Qué lenguaje se utiliza para crear páginas web interactivas?", "Python": "Python", "Java": "Java", "JavaScript": "JavaScript",
+                "Que signifie 'URL' ?": "¿Qué significa 'URL'?", "Uniform Resource Locator": "Uniform Resource Locator", "User Request Link": "User Request Link", "Universal Routing Language": "Universal Routing Language",
+                "Quel système d’exploitation est développé par Microsoft ?": "¿Qué sistema operativo es desarrollado por Microsoft?", "Linux": "Linux", "Windows": "Windows", "macOS": "macOS",
+                "Quel est l’abréviation de l’intelligence artificielle ?": "¿Cuál es la abreviatura de inteligencia artificial?", "AI": "AI", "IA": "IA", "IT": "IT",
+                "Que veut dire 'CPU' ?": "¿Qué significa 'CPU'?", "Central Processing Unit": "Central Processing Unit", "Control Program Utility": "Control Program Utility", "Computer Program Unit": "Computer Program Unit",
+                "Quel est le langage le plus utilisé pour les applications mobiles Android ?": "¿Cuál es el lenguaje más utilizado para las aplicaciones móviles de Android?", "Kotlin": "Kotlin", "Swift": "Swift", "Ruby": "Ruby",
+                "Que fait un antivirus ?": "¿Qué hace un antivirus?", "Il crée des virus": "Crea virus", "Il protège l’ordinateur": "Protege el ordenador", "Il nettoie l’écran": "Limpia la pantalla",
+                "Quelle entreprise a créé l’iPhone ?": "¿Qué empresa creó el iPhone?", "Google": "Google", "Apple": "Apple", "Samsung": "Samsung",
+                "Quel moteur de recherche est le plus utilisé ?": "¿Qué motor de búsqueda es el más utilizado?", "Bing": "Bing", "Yahoo": "Yahoo",
+            },
+            'zh': { // Mandarin (Simplified Chinese)
+                // Culture Générale
+                "Quelle est la capitale de la France ?": "法国的首都是哪里？", "Paris": "巴黎", "Londres": "伦敦", "Rome": "罗马",
+                "Quel est le plus grand océan du monde ?": "世界上最大的海洋是哪个？", "Atlantique": "大西洋", "Indien": "印度洋", "Pacifique": "太平洋",
+                "Quelle langue est la plus parlée au monde ?": "世界上使用最多的语言是哪种？", "Anglais": "英语", "Chinois": "中文", "Espagnol": "西班牙语",
+                "Combien de continents y a-t-il ?": "有多少个大洲？", "5": "5", "6": "6", "7": "7",
+                "Quel pays a le plus d'habitants ?": "哪个国家的人口最多？", "Inde": "印度", "Chine": "中国", "États-Unis": "美国",
+                "Quel est le plus long fleuve du monde ?": "世界上最长的河流是哪条？", "Nil": "尼罗河", "Amazone": "亚马逊河", "Mississippi": "密西西比河",
+                "Dans quel pays se trouve la Tour Eiffel ?": "埃菲尔铁塔位于哪个国家？", "Italie": "意大利", "Espagne": "西班牙", "France": "法国",
+                "Quel est le plus grand désert du monde ?": "世界上最大的沙漠是哪个？", "Gobi": "戈壁沙漠", "Sahara": "撒哈拉沙漠", "Antarctique": "南极洲",
+                "Qui a peint la Joconde ?": "《蒙娜丽莎》是谁画的？", "Picasso": "毕加索", "Léonard de Vinci": "列奥纳多·达·芬奇", "Van Gogh": "梵高",
+                "Quel est le pays d’origine des pizzas ?": "比萨饼起源于哪个国家？", "Grèce": "希腊",
+                // Sciences
+                "Quel est le symbole chimique de l'eau ?": "水的化学符号是什么？", "H2O": "H2O", "O2": "O2", "CO2": "CO2",
+                "Combien de planètes dans le système solaire ?": "太阳系有多少颗行星？", "8": "8", "9": "9",
+                "Quelle planète est surnommée la planète rouge ?": "哪个行星被称为红色星球？", "Vénus": "金星", "Mars": "火星", "Jupiter": "木星",
+                "Combien de dents possède un adulte ?": "一个成年人有多少颗牙齿？", "32": "32", "30": "30", "28": "28",
+                "Quel gaz respire-t-on ?": "我们呼吸什么气体？", "Hydrogène": "氢气", "Dioxyde de carbone": "二氧化碳", "Oxygène": "氧气",
+                "Combien de pattes a une araignée ?": "蜘蛛有多少条腿？", "10": "10",
+                "À quelle température l'eau gèle-t-elle ?": "水在什么温度下结冰？", "0°C": "0°C", "100°C": "100°C", "-10°C": "-10°C",
+                "Quel est l’organe principal du système nerveux ?": "神经系统的主要器官是什么？", "Cœur": "心脏", "Foie": "肝脏", "Cerveau": "大脑",
+                "Quel est l’élément chimique représenté par le symbole Fe ?": "符号Fe代表哪种化学元素？", "Fer": "铁", "Fluor": "氟", "Francium": "钫",
+                "Combien de chromosomes possède un humain ?": "人类拥有多少条染色体？", "42": "42", "46": "46", "48": "48",
+                // Histoire
+                "En quelle année a eu lieu la Révolution française ?": "法国大革命发生在哪一年？", "1789": "1789", "1815": "1815", "1848": "1848",
+                "Qui était le premier président des États-Unis ?": "美国第一任总统是谁？", "Abraham Lincoln": "亚伯拉罕·林肯", "George Washington": "乔治·华盛顿", "Thomas Jefferson": "托马斯·杰斐逊",
+                "Quel empire a construit le Colisée ?": "哪个帝国建造了罗马斗兽场？", "Grec": "希腊", "Égyptien": "埃及", "Romain": "罗马",
+                "Quelle guerre a eu lieu de 1939 à 1945 ?": "1939年至1945年发生了哪场战争？", "Guerre de Sécession": "美国内战", "Première Guerre mondiale": "第一次世界大战", "Seconde Guerre mondiale": "第二次世界大战",
+                "Qui était Napoléon Bonaparte ?": "拿破仑·波拿巴是谁？", "Peintre": "画家", "Empereur": "皇帝", "Scientifique": "科学家",
+                "Quel mur est tombé en 1989 ?": "1989年哪堵墙倒塌了？", "Mur de Chine": "中国长城", "Mur de Berlin": "柏林墙", "Mur d’Hadrien": "哈德良长城",
+                "Où a eu lieu le débarquement du 6 juin 1944 ?": "1944年6月6日的登陆发生在哪里？", "Normandie": "诺曼底", "Bretagne": "布列塔尼", "Provence": "普罗旺斯",
+                "Quel peuple a inventé l’écriture ?": "哪个民族发明了文字？", "Romains": "罗马人", "Sumériens": "苏美尔人", "Égyptiens": "埃及人",
+                "Qui a découvert l’Amérique ?": "谁发现了美洲？", "Marco Polo": "马可·波罗", "Christophe Colomb": "克里斯托弗·哥伦布", "Magellan": "麦哲伦",
+                "Quel roi a été guillotiné pendant la Révolution française ?": "法国大革命期间哪个国王被送上断头台？", "Louis XIV": "路易十四", "Louis XVI": "路易十六", "Louis XVIII": "路易十八",
+                // Géographie
+                "Quel est le plus haut sommet du monde ?": "世界最高峰是哪座？", "K2": "乔戈里峰", "Mont Everest": "珠穆朗玛峰", "Mont Blanc": "勃朗峰",
+                "Quel pays est en forme de botte ?": "哪个国家形状像靴子？", "Espagne": "西班牙", "Grèce": "希腊", "Italie": "意大利",
+                "Quel est le plus grand pays du monde ?": "世界上最大的国家是哪个？", "Canada": "加拿大", "Chine": "中国", "Russie": "俄罗斯",
+                "Quel est le plus grand lac d’Afrique ?": "非洲最大的湖泊是哪个？", "Tchad": "乍得湖", "Victoria": "维多利亚湖", "Tanganyika": "坦噶尼喀湖",
+                "Dans quel pays se trouve le Kilimandjaro ?": "乞力马扎罗山位于哪个国家？", "Kenya": "肯尼亚", "Tanzanie": "坦桑尼亚", "Ouganda": "乌干达",
+                "Quel est le désert le plus chaud du monde ?": "世界上最热的沙漠是哪个？", "Sahara": "撒哈拉沙漠", "Gobi": "戈壁沙漠", "Kalahari": "喀拉哈里沙漠",
+                "Quelle mer borde la France au sud ?": "法国南部濒临哪个海？", "Mer du Nord": "北海", "Méditerranée": "地中海", "Baltique": "波罗的海",
+                "Quelle est la capitale de l’Australie ?": "澳大利亚的首都是哪里？", "Sydney": "悉尼", "Melbourne": "墨尔本", "Canberra": "堪培拉",
+                "Combien de pays composent l’Union Européenne ?": "欧盟由多少个国家组成？", "27": "27", "28": "28", "26": "26",
+                "Quel est le plus petit pays du monde ?": "世界上最小的国家是哪个？", "Monaco": "摩纳哥", "Saint-Marin": "圣马力诺", "Vatican": "梵蒂冈",
+                // Mathématiques
+                "Combien font 7 x 8 ?": "7乘以8等于多少？", "56": "56", "64": "64", "48": "48",
+                "Quel est le carré de 9 ?": "9的平方是多少？", "81": "81", "72": "72", "99": "99",
+                "Quel est le nombre premier entre 10 et 20 ?": "10到20之间的质数是哪个？", "14": "14", "17": "17", "18": "18",
+                "Combien de côtés a un hexagone ?": "六边形有多少条边？", "5": "5", "6": "6", "7": "7",
+                "Quel est le résultat de 100 ÷ 4 ?": "100除以4的结果是多少？", "20": "20", "25": "25", "30": "30",
+                "Quelle est la racine carrée de 144 ?": "144的平方根是多少？", "11": "11", "12": "12", "13": "13",
+                "Combien font 15 + 27 ?": "15加27等于多少？", "42": "42", "52": "52", "44": "44",
+                "Combien y a-t-il de degrés dans un angle droit ?": "直角有多少度？", "45": "45", "90": "90", "180": "180",
+                "Combien font 9 x 6 ?": "9乘以6等于多少？", "54": "54", "64": "64", "46": "46",
+                "Quel est le périmètre d’un carré de côté 5 cm ?": "边长为5厘米的正方形周长是多少？", "10 cm": "10厘米", "20 cm": "20厘米", "25 cm": "25厘米",
+                // Musique
+                "Quel compositeur est connu pour la Symphonie n°9 ?": "哪位作曲家以第九交响曲闻名？", "Mozart": "莫扎特", "Beethoven": "贝多芬", "Bach": "巴赫",
+                "Quel artiste a chanté 'Thriller' ?": "哪位艺术家演唱了《颤栗者》？", "Prince": "王子", "Michael Jackson": "迈克尔·杰克逊", "Stevie Wonder": "史提夫·汪达",
+                "Quel est l’instrument principal d’un pianiste ?": "钢琴家的主要乐器是什么？", "Piano": "钢琴", "Guitare": "吉他", "Batterie": "鼓",
+                "Quel style musical est associé à Bob Marley ?": "鲍勃·马利与哪种音乐风格相关？", "Rock": "摇滚", "Reggae": "雷鬼", "Jazz": "爵士",
+                "Quel chanteur français est surnommé 'le Taulier' ?": "哪位法国歌手被称为“老板”？", "Johnny Hallyday": "约翰尼·哈里戴", "Claude François": "克洛德·弗朗索瓦", "Jean-Jacques Goldman": "让-雅克·高德曼",
+                "Quel groupe a chanté 'Bohemian Rhapsody' ?": "哪个乐队演唱了《波西米亚狂想曲》？", "The Beatles": "披头士乐队", "Queen": "皇后乐队", "Pink Floyd": "平克·弗洛伊德",
+                "Quel est le symbole de la musique ?": "音乐的符号是什么？", "Clé de sol": "高音谱号", "Note": "音符", "Partition": "乐谱",
+                "Quel chanteur est connu pour 'Formidable' ?": "哪位歌手以《Formidable》闻名？", "Stromae": "斯特罗迈", "Maître Gims": "迈特尔·吉姆斯", "Orelsan": "奥雷尔桑",
+                "Quel instrument a des cordes et un archet ?": "哪种乐器有弦和弓？", "Guitare": "吉他", "Violoncelle": "大提琴", "Flûte": "长笛",
+                "Quel festival de musique a lieu à Belfort ?": "哪个音乐节在贝尔福举行？", "Les Vieilles Charrues": "老犁音乐节", "Eurockéennes": "欧洲摇滚音乐节", "Hellfest": "地狱音乐节",
+                // Cinéma
+                "Qui a réalisé 'Titanic' ?": "谁导演了《泰坦尼克号》？", "Steven Spielberg": "史蒂文·斯皮尔伯格", "James Cameron": "詹姆斯·卡梅隆", "Christopher Nolan": "克里斯托弗·诺兰",
+                "Quel acteur incarne Harry Potter ?": "哪位演员扮演哈利·波特？", "Elijah Wood": "伊莱贾·伍德", "Daniel Radcliffe": "丹尼尔·雷德克里夫", "Rupert Grint": "鲁伯特·格林特",
+                "Quel film français a remporté l’Oscar du Meilleur Film Étranger en 2012 ?": "哪部法国电影在2012年获得了奥斯卡最佳外语片奖？", "Intouchables": "无法触碰", "Amour": "爱", "The Artist": "艺术家",
+                "Quel est le nom du clown dans 'Ça' ?": "《它》中小丑的名字是什么？", "Bozo": "博佐", "Pennywise": "潘尼怀斯", "Ronald": "罗纳德",
+                "Quel est le nom du personnage principal dans 'Gladiator' ?": "《角斗士》中主角的名字是什么？", "Maximus": "马克西姆斯", "Julius": "尤利乌斯", "Marcus": "马库斯",
+                "Quel studio a produit 'Toy Story' ?": "哪个工作室制作了《玩具总动员》？", "DreamWorks": "梦工厂", "Pixar": "皮克斯", "Universal": "环球影业",
+                "Dans quel film entend-on 'Je suis ton père' ?": "在哪部电影中听到“我是你父亲”？", "Star Trek": "星际迷航", "Star Wars": "星球大战", "Matrix": "黑客帝国",
+                "Quel film de Luc Besson met en scène une tueuse nommée Mathilda ?": "吕克·贝松的哪部电影以名叫玛蒂尔达的女杀手为主角？", "Léon": "这个杀手不太冷", "Nikita": "尼基塔", "Taxi": "出租车",
+                "Qui joue le Joker dans 'The Dark Knight' ?": "谁在《黑暗骑士》中扮演小丑？", "Jared Leto": "杰瑞德·莱托", "Heath Ledger": "希斯·莱杰", "Joaquin Phoenix": "华金·菲尼克斯",
+                "Quel est le titre du premier film Marvel avec Iron Man ?": "第一部有钢铁侠的漫威电影的标题是什么？", "Iron Man": "钢铁侠", "Avengers": "复仇者联盟", "Captain America": "美国队长",
+                // Littérature
+                "Qui a écrit 'Les Misérables' ?": "谁写了《悲惨世界》？", "Victor Hugo": "维克多·雨果", "Émile Zola": "埃米尔·左拉", "Gustave Flaubert": "古斯塔夫·福楼拜",
+                "Qui est l’auteur de 'Harry Potter' ?": "《哈利·波特》的作者是谁？", "J.K. Rowling": "J.K.罗琳", "Stephen King": "斯蒂芬·金", "Suzanne Collins": "苏珊·柯林斯",
+                "Quel est le héros de l’Iliade ?": "《伊利亚特》的英雄是谁？", "Ulysse": "奥德修斯", "Achille": "阿喀琉斯", "Hector": "赫克托耳",
+                "Quel livre commence par 'Longtemps, je me suis couché de bonne heure' ?": "哪本书以“在很长一段时间里，我都是早早就睡了”开头？", "Madame Bovary": "包法利夫人", "À la recherche du temps perdu": "追忆似水年华", "Le Rouge et le Noir": "红与黑",
+                "Quel auteur a écrit 'Le Petit Prince' ?": "哪位作者写了《小王子》？", "Saint-Exupéry": "圣埃克苏佩里", "Verlaine": "魏尔伦", "Camus": "加缪",
+                "Qui est l’auteur de '1984' ?": "《1984》的作者是谁？", "Orwell": "奥威尔", "Huxley": "赫胥黎", "Kafka": "卡夫卡",
+                "Dans quel livre trouve-t-on le personnage de Jean Valjean ?": "在哪本书中可以找到冉阿让这个角色？", "Germinal": "萌芽", "Les Misérables": "悲惨世界", "Le Comte de Monte-Cristo": "基督山伯爵",
+                "Quel roman de Camus parle d’un meurtre sur une plage ?": "加缪的哪部小说讲述了在海滩上发生的谋杀案？", "L'Étranger": "局外人", "La Peste": "鼠疫", "Le Mythe de Sisyphe": "西西弗神话",
+                "Qui a écrit 'Cyrano de Bergerac' ?": "谁写了《西拉诺·德·贝热拉克》？", "Rostand": "罗斯丹", "Molière": "莫里哀", "Hugo": "雨果",
+                "Quel roman commence dans un orphelinat et se termine sur un ring de boxe ?": "哪部小说开头在孤儿院，结尾在拳击场？", "Le Vieil Homme et la Mer": "老人与海", "L'Attrape-cœurs": "麦田里的守望者", "Des souris et des hommes": "人鼠之间",
+                // Sport
+                "Combien de joueurs dans une équipe de football ?": "一支足球队有多少名球员？", "9": "9", "10": "10", "11": "11",
+                "Quel pays a gagné la Coupe du Monde 2018 ?": "哪个国家赢得了2018年世界杯？", "Brésil": "巴西", "France": "法国", "Allemagne": "德国",
+                "Combien de points pour un essai au rugby ?": "橄榄球达阵得多少分？", "3": "3", "5": "5", "7": "7",
+                "Quel joueur est surnommé 'King James' ?": "哪个球员被称为“詹皇”？", "Kobe Bryant": "科比·布莱恩特", "Michael Jordan": "迈克尔·乔丹", "LeBron James": "勒布朗·詹姆斯",
+                "Combien de grands chelems dans une année de tennis ?": "一年网球有多少个大满贯赛事？", "4": "4",
+                "Quel coureur cycliste a gagné 5 Tours de France ?": "哪个自行车手赢得了5次环法自行车赛冠军？", "Chris Froome": "克里斯·弗鲁姆", "Bernard Hinault": "贝尔纳·伊诺", "Eddy Merckx": "埃迪·默克斯",
+                "Quelle discipline se pratique avec un sabre ?": "哪个项目使用佩剑？", "Judo": "柔道", "Escrime": "击剑", "Boxe": "拳击",
+                "Quel sport se joue avec un volant ?": "哪个运动使用羽毛球？", "Squash": "壁球", "Badminton": "羽毛球", "Tennis de table": "乒乓球",
+                "Où ont eu lieu les JO 2020 (en 2021) ?": "2020年（实际为2021年）奥运会在哪里举行？", "Paris": "巴黎", "Tokyo": "东京", "Pékin": "北京",
+                "Quel sportif a remporté 23 titres du Grand Chelem ?": "哪个运动员赢得了23个大满贯冠军？", "Serena Williams": "塞雷娜·威廉姆斯", "Roger Federer": "罗杰·费德勒", "Nadal": "纳达尔",
+                // Informatique
+                "Que veut dire HTML ?": "HTML是什么意思？", "HyperText Markup Language": "超文本标记语言", "HighText Machine Language": "高级文本机器语言", "HyperTool Multi Language": "超工具多语言",
+                "Quel langage est utilisé pour créer des pages web interactives ?": "哪种语言用于创建交互式网页？", "Python": "Python", "Java": "Java", "JavaScript": "JavaScript",
+                "Que signifie 'URL' ?": "“URL”是什么意思？", "Uniform Resource Locator": "统一资源定位符", "User Request Link": "用户请求链接", "Universal Routing Language": "通用路由语言",
+                "Quel système d’exploitation est développé par Microsoft ?": "哪个操作系统是由微软开发的？", "Linux": "Linux", "Windows": "Windows", "macOS": "macOS",
+                "Quel est l’abréviation de l’intelligence artificielle ?": "人工智能的缩写是什么？", "AI": "AI", "IA": "IA", "IT": "IT",
+                "Que veut dire 'CPU' ?": "“CPU”是什么意思？", "Central Processing Unit": "中央处理器", "Control Program Utility": "控制程序实用工具", "Computer Program Unit": "计算机程序单元",
+                "Quel est le langage le plus utilisé pour les applications mobiles Android ?": "用于安卓移动应用最常用的语言是什么？", "Kotlin": "Kotlin", "Swift": "Swift", "Ruby": "Ruby",
+                "Que fait un antivirus ?": "杀毒软件做什么？", "Il crée des virus": "它制造病毒", "Il protège l’ordinateur": "它保护计算机", "Il nettoie l’écran": "它清洁屏幕",
+                "Quelle entreprise a créé l’iPhone ?": "哪家公司创造了iPhone？", "Google": "谷歌", "Apple": "苹果", "Samsung": "三星",
+                "Quel moteur de recherche est le plus utilisé ?": "哪个搜索引擎使用最多？", "Bing": "必应", "Yahoo": "雅虎",
+            },
+            'ru': { // Russian
+                // Culture Générale
+                "Quelle est la capitale de la France ?": "Какая столица Франции?", "Paris": "Париж", "Londres": "Лондон", "Rome": "Рим",
+                "Quel est le plus grand océan du monde ?": "Какой самый большой океан в мире?", "Atlantique": "Атлантический", "Indien": "Индийский", "Pacifique": "Тихий",
+                "Quelle langue est la plus parlée au monde ?": "На каком языке больше всего говорят в мире?", "Anglais": "Английский", "Chinois": "Китайский", "Espagnol": "Испанский",
+                "Combien de continents y a-t-il ?": "Сколько существует континентов?", "5": "5", "6": "6", "7": "7",
+                "Quel pays a le plus d'habitants ?": "В какой стране больше всего жителей?", "Inde": "Индия", "Chine": "Китай", "États-Unis": "США",
+                "Quel est le plus long fleuve du monde ?": "Какая самая длинная река в мире?", "Nil": "Нил", "Amazone": "Амазонка", "Mississippi": "Миссисипи",
+                "Dans quel pays se trouve la Tour Eiffel ?": "В какой стране находится Эйфелева башня?", "Italie": "Италия", "Espagne": "Испания", "France": "Франция",
+                "Quel est le plus grand désert du monde ?": "Какая самая большая пустыня в мире?", "Gobi": "Гоби", "Sahara": "Сахара", "Antarctique": "Антарктида",
+                "Qui a peint la Joconde ?": "Кто написал Мону Лизу?", "Picasso": "Пикассо", "Léonard de Vinci": "Леонардо да Винчи", "Van Gogh": "Ван Гог",
+                "Quel est le pays d’origine des pizzas ?": "Какая страна является родиной пиццы?", "Grèce": "Греция",
+                 // Sciences
+                "Quel est le symbole chimique de l'eau ?": "Какой химический символ воды?", "H2O": "H2O", "O2": "O2", "CO2": "CO2",
+                "Combien de planètes dans le système solaire ?": "Сколько планет в Солнечной системе?", "8": "8", "9": "9",
+                "Quelle planète est surnommée la planète rouge ?": "Какую планету называют красной планетой?", "Vénus": "Венера", "Mars": "Марс", "Jupiter": "Юпитер",
+                "Combien de dents possède un adulte ?": "Сколько зубов у взрослого человека?", "32": "32", "30": "30", "28": "28",
+                "Quel gaz respire-t-on ?": "Каким газом мы дышим?", "Hydrogène": "Водород", "Dioxyde de carbone": "Углекислый газ", "Oxygène": "Кислород",
+                "Combien de pattes a une araignée ?": "Сколько лап у паука?", "10": "10",
+                "À quelle température l'eau gèle-t-elle ?": "При какой температуре замерзает вода?", "0°C": "0°C", "100°C": "100°C", "-10°C": "-10°C",
+                "Quel est l’organe principal du système nerveux ?": "Какой главный орган нервной системы?", "Cœur": "Сердце", "Foie": "Печень", "Cerveau": "Мозг",
+                "Quel est l’élément chimique représenté par le symbole Fe ?": "Какой химический элемент обозначается символом Fe?", "Fer": "Железо", "Fluor": "Фтор", "Francium": "Франций",
+                "Combien de chromosomes possède un humain ?": "Сколько хромосом у человека?", "42": "42", "46": "46", "48": "48",
+                // Histoire
+                "En quelle année a eu lieu la Révolution française ?": "В каком году произошла Французская революция?", "1789": "1789", "1815": "1815", "1848": "1848",
+                "Qui était le premier président des États-Unis ?": "Кто был первым президентом США?", "Abraham Lincoln": "Авраам Линкольн", "George Washington": "Джордж Вашингтон", "Thomas Jefferson": "Томас Джефферсон",
+                "Quel empire a construit le Colisée ?": "Какая империя построила Колизей?", "Grec": "Греческая", "Égyptien": "Египетская", "Romain": "Римская",
+                "Quelle guerre a eu lieu de 1939 à 1945 ?": "Какая война проходила с 1939 по 1945 год?", "Guerre de Sécession": "Гражданская война в США", "Première Guerre mondiale": "Первая мировая война", "Seconde Guerre mondiale": "Вторая мировая война",
+                "Qui était Napoléon Bonaparte ?": "Кем был Наполеон Бонапарт?", "Peintre": "Художник", "Empereur": "Император", "Scientifique": "Ученый",
+                "Quel mur est tombé en 1989 ?": "Какая стена пала в 1989 году?", "Mur de Chine": "Великая Китайская стена", "Mur de Berlin": "Берлинская стена", "Mur d’Hadrien": "Вал Адриана",
+                "Où a eu lieu le débarquement du 6 juin 1944 ?": "Где произошла высадка 6 июня 1944 года?", "Normandie": "Нормандия", "Bretagne": "Бретань", "Provence": "Прованс",
+                "Quel peuple a inventé l’écriture ?": "Какой народ изобрел письменность?", "Romains": "Римляне", "Sumériens": "Шумеры", "Égyptiens": "Египтяне",
+                "Qui a découvert l’Amérique ?": "Кто открыл Америку?", "Marco Polo": "Марко Поло", "Christophe Colomb": "Христофор Колумб", "Magellan": "Магеллан",
+                "Quel roi a été guillotiné pendant la Révolution française ?": "Какой король был гильотинирован во время Французской революции?", "Louis XIV": "Людовик XIV", "Louis XVI": "Людовик XVI", "Louis XVIII": "Людовик XVIII",
+                 // Géographie
+                "Quel est le plus haut sommet du monde ?": "Какая самая высокая вершина в мире?", "K2":"K2 (Чогори)", "Mont Everest":"Эверест", "Mont Blanc":"Монблан",
+                "Quel pays est en forme de botte ?": "Какая страна имеет форму сапога?", "Espagne":"Испания", "Grèce":"Греция", "Italie":"Италия",
+                "Quel est le plus grand pays du monde ?": "Какая самая большая страна в мире?", "Canada":"Канада", "Chine":"Китай", "Russie":"Россия",
+                "Quel est le plus grand lac d’Afrique ?": "Какое самое большое озеро в Африке?", "Tchad":"Чад", "Victoria":"Виктория", "Tanganyika":"Танганьика",
+                "Dans quel pays se trouve le Kilimandjaro ?": "В какой стране находится Килиманджаро?", "Kenya":"Кения", "Tanzanie":"Танзания", "Ouganda":"Уганда",
+                "Quel est le désert le plus chaud du monde ?": "Какая самая жаркая пустыня в мире?", "Gobi":"Гоби", "Kalahari":"Калахари",
+                "Quelle mer borde la France au sud ?": "Какое море омывает Францию с юга?", "Mer du Nord":"Северное море", "Méditerranée":"Средиземное море", "Baltique":"Балтийское море",
+                "Quelle est la capitale de l’Australie ?": "Какая столица Австралии?", "Sydney":"Сидней", "Melbourne":"Мельбурн", "Canberra":"Канберра",
+                "Combien de pays composent l’Union Européenne ?": "Сколько стран входит в Европейский Союз?", "26":"26",
+                "Quel est le plus petit pays du monde ?": "Какая самая маленькая страна в мире?", "Monaco":"Монако", "Saint-Marin":"Сан-Марино", "Vatican":"Ватикан",
+                // Mathématiques
+                "Combien font 7 x 8 ?": "Сколько будет 7 x 8?", "56": "56", "64": "64", "48": "48",
+                "Quel est le carré de 9 ?": "Какой квадрат у 9?", "81": "81", "72": "72", "99": "99",
+                "Quel est le nombre premier entre 10 et 20 ?": "Какое простое число между 10 и 20?", "14": "14", "17": "17", "18": "18",
+                "Combien de côtés a un hexagone ?": "Сколько сторон у шестиугольника?",
+                "Quel est le résultat de 100 ÷ 4 ?": "Какой результат у 100 ÷ 4?", "20": "20", "25": "25", "30": "30",
+                "Quelle est la racine carrée de 144 ?": "Какой квадратный корень у 144?", "11": "11", "12": "12", "13": "13",
+                "Combien font 15 + 27 ?": "Сколько будет 15 + 27?", "52": "52", "44": "44",
+                "Combien y a-t-il de degrés dans un angle droit ?": "Сколько градусов в прямом угле?", "45": "45", "90": "90", "180": "180",
+                "Combien font 9 x 6 ?": "Сколько будет 9 x 6?", "54": "54",
+                "Quel est le périmètre d’un carré de côté 5 cm ?": "Какой периметр у квадрата со стороной 5 см?", "10 cm": "10 см", "20 cm": "20 см", "25 cm": "25 см",
+                // Musique
+                "Quel compositeur est connu pour la Symphonie n°9 ?": "Какой композитор известен Симфонией №9?", "Mozart": "Моцарт", "Beethoven": "Бетховен", "Bach": "Бах",
+                "Quel artiste a chanté 'Thriller' ?": "Какой артист спел 'Thriller'?", "Prince": "Принс", "Michael Jackson": "Майкл Джексон", "Stevie Wonder": "Стиви Уандер",
+                "Quel est l’instrument principal d’un pianiste ?": "Какой основной инструмент у пианиста?", "Piano": "Пианино", "Guitare": "Гитара", "Batterie": "Барабаны",
+                "Quel style musical est associé à Bob Marley ?": "Какой музыкальный стиль ассоциируется с Бобом Марли?", "Rock": "Рок", "Reggae": "Регги", "Jazz": "Джаз",
+                "Quel chanteur français est surnommé 'le Taulier' ?": "Какого французского певца прозвали 'le Taulier'?", "Johnny Hallyday": "Джонни Холлидей", "Claude François": "Клод Франсуа", "Jean-Jacques Goldman": "Жан-Жак Гольдман",
+                "Quel groupe a chanté 'Bohemian Rhapsody' ?": "Какая группа спела 'Bohemian Rhapsody'?", "The Beatles": "The Beatles", "Queen": "Queen", "Pink Floyd": "Pink Floyd",
+                "Quel est le symbole de la musique ?": "Какой символ у музыки?", "Clé de sol": "Скрипичный ключ", "Note": "Нота", "Partition": "Партитура",
+                "Quel chanteur est connu pour 'Formidable' ?": "Какой певец известен песней 'Formidable'?", "Stromae": "Stromae", "Maître Gims": "Maître Gims", "Orelsan": "Orelsan",
+                "Quel instrument a des cordes et un archet ?": "У какого инструмента есть струны и смычок?", "Violoncelle": "Виолончель", "Flûte": "Флейта",
+                "Quel festival de musique a lieu à Belfort ?": "Какой музыкальный фестиваль проходит в Бельфоре?", "Les Vieilles Charrues": "Les Vieilles Charrues", "Eurockéennes": "Eurockéennes", "Hellfest": "Hellfest",
+                // Cinéma
+                "Qui a réalisé 'Titanic' ?": "Кто снял 'Титаник'?", "Steven Spielberg": "Стивен Спилберг", "James Cameron": "Джеймс Кэмерон", "Christopher Nolan": "Кристофер Нолан",
+                "Quel acteur incarne Harry Potter ?": "Какой актер играет Гарри Поттера?", "Elijah Wood": "Элайджа Вуд", "Daniel Radcliffe": "Дэниел Рэдклифф", "Rupert Grint": "Руперт Гринт",
+                "Quel film français a remporté l’Oscar du Meilleur Film Étranger en 2012 ?": "Какой французский фильм получил Оскар за лучший фильм на иностранном языке в 2012 году?", "Intouchables": "1+1", "Amour": "Любовь", "The Artist": "Артист",
+                "Quel est le nom du clown dans 'Ça' ?": "Как зовут клоуна в 'Оно'?", "Bozo": "Бозо", "Pennywise": "Пеннивайз", "Ronald": "Рональд",
+                "Quel est le nom du personnage principal dans 'Gladiator' ?": "Как зовут главного героя в 'Гладиаторе'?", "Maximus": "Максимус", "Julius": "Юлий", "Marcus": "Марк",
+                "Quel studio a produit 'Toy Story' ?": "Какая студия выпустила 'Историю игрушек'?", "DreamWorks": "DreamWorks", "Pixar": "Pixar", "Universal": "Universal",
+                "Dans quel film entend-on 'Je suis ton père' ?": "В каком фильме звучит фраза 'Я твой отец'?", "Star Trek": "Звёздный путь", "Star Wars": "Звёздные войны", "Matrix": "Матрица",
+                "Quel film de Luc Besson met en scène une tueuse nommée Mathilda ?": "В каком фильме Люка Бессона действует убийца по имени Матильда?", "Léon": "Леон", "Nikita": "Никита", "Taxi": "Такси",
+                "Qui joue le Joker dans 'The Dark Knight' ?": "Кто играет Джокера в 'Тёмном рыцаре'?", "Jared Leto": "Джаред Лето", "Heath Ledger": "Хит Леджер", "Joaquin Phoenix": "Хоакин Феникс",
+                "Quel est le titre du premier film Marvel avec Iron Man ?": "Как называется первый фильм Marvel с Железным человеком?", "Iron Man": "Железный человек", "Avengers": "Мстители", "Captain America": "Капитан Америка",
+                // Littérature
+                "Qui a écrit 'Les Misérables' ?": "Кто написал 'Отверженных'?", "Victor Hugo": "Виктор Гюго", "Émile Zola": "Эмиль Золя", "Gustave Flaubert": "Гюстав Флобер",
+                "Qui est l’auteur de 'Harry Potter' ?": "Кто автор 'Гарри Поттера'?", "J.K. Rowling": "Дж.К. Роулинг", "Stephen King": "Стивен Кинг", "Suzanne Collins": "Сьюзен Коллинз",
+                "Quel est le héros de l’Iliade ?": "Кто герой 'Илиады'?", "Ulysse": "Одиссей", "Achille": "Ахиллес", "Hector": "Гектор",
+                "Quel livre commence par 'Longtemps, je me suis couché de bonne heure' ?": "Какая книга начинается словами 'Долгое время я ложился спать рано'?", "Madame Bovary": "Госпожа Бовари", "À la recherche du temps perdu": "В поисках утраченного времени", "Le Rouge et le Noir": "Красное и черное",
+                "Quel auteur a écrit 'Le Petit Prince' ?": "Какой автор написал 'Маленького принца'?", "Saint-Exupéry": "Сент-Экзюпери", "Verlaine": "Верлен", "Camus": "Камю",
+                "Qui est l’auteur de '1984' ?": "Кто автор '1984'?", "Orwell": "Оруэлл", "Huxley": "Хаксли", "Kafka": "Кафка",
+                "Dans quel livre trouve-t-on le personnage de Jean Valjean ?": "В какой книге встречается персонаж Жан Вальжан?", "Germinal": "Жерминаль", "Les Misérables": "Отверженные", "Le Comte de Monte-Cristo": "Граф Монте-Кристо",
+                "Quel roman de Camus parle d’un meurtre sur une plage ?": "В каком романе Камю рассказывается об убийстве на пляже?", "L'Étranger": "Посторонний", "La Peste": "Чума", "Le Mythe de Sisyphe": "Миф о Сизифе",
+                "Qui a écrit 'Cyrano de Bergerac' ?": "Кто написал 'Сирано де Бержерак'?", "Rostand": "Ростан", "Molière": "Мольер", "Hugo": "Гюго",
+                "Quel roman commence dans un orphelinat et se termine sur un ring de boxe ?": "Какой роман начинается в приюте и заканчивается на боксерском ринге?", "Le Vieil Homme et la Mer": "Старик и море", "L'Attrape-cœurs": "Над пропастью во ржи", "Des souris et des hommes": "О мышах и людях",
+                // Sport
+                "Combien de joueurs dans une équipe de football ?": "Сколько игроков в футбольной команде?", "9": "9", "10": "10", "11": "11",
+                "Quel pays a gagné la Coupe du Monde 2018 ?": "Какая страна выиграла Чемпионат мира 2018?", "Brésil": "Бразилия", "Allemagne": "Германия",
+                "Combien de points pour un essai au rugby ?": "Сколько очков за попытку в регби?", "3": "3", "5": "5", "7": "7",
+                "Quel joueur est surnommé 'King James' ?": "Какого игрока прозвали 'King James'?", "Kobe Bryant": "Коби Брайант", "Michael Jordan": "Майкл Джордан", "LeBron James": "Леброн Джеймс",
+                "Combien de grands chelems dans une année de tennis ?": "Сколько турниров Большого шлема в теннисном году?", "4": "4",
+                "Quel coureur cycliste a gagné 5 Tours de France ?": "Какой велогонщик выиграл 5 Тур де Франс?", "Chris Froome": "Крис Фрум", "Bernard Hinault": "Бернар Ино", "Eddy Merckx": "Эдди Меркс",
+                "Quelle discipline se pratique avec un sabre ?": "В какой дисциплине используется сабля?", "Judo": "Дзюдо", "Escrime": "Фехтование", "Boxe": "Бокс",
+                "Quel sport se joue avec un volant ?": "В каком виде спорта играют воланом?", "Squash": "Сквош", "Badminton": "Бадминтон", "Tennis de table": "Настольный теннис",
+                "Où ont eu lieu les JO 2020 (en 2021) ?": "Где проходили Олимпийские игры 2020 года (в 2021 году)?", "Pékin": "Пекин",
+                "Quel sportif a remporté 23 titres du Grand Chelem ?": "Какой спортсмен выиграл 23 титула Большого шлема?", "Serena Williams": "Серена Уильямс", "Roger Federer": "Роджер Федерер", "Nadal": "Надаль",
+                // Informatique
+                "Que veut dire HTML ?": "Что означает HTML?", "HyperText Markup Language": "HyperText Markup Language", "HighText Machine Language": "HighText Machine Language", "HyperTool Multi Language": "HyperTool Multi Language",
+                "Quel langage est utilisé pour créer des pages web interactives ?": "Какой язык используется для создания интерактивных веб-страниц?", "Python": "Python", "Java": "Java", "JavaScript": "JavaScript",
+                "Que signifie 'URL' ?": "Что означает 'URL'?", "Uniform Resource Locator": "Uniform Resource Locator", "User Request Link": "User Request Link", "Universal Routing Language": "Universal Routing Language",
+                "Quel système d’exploitation est développé par Microsoft ?": "Какая операционная система разработана Microsoft?", "Linux": "Linux", "Windows": "Windows", "macOS": "macOS",
+                "Quel est l’abréviation de l’intelligence artificielle ?": "Какая аббревиатура у искусственного интеллекта?", "AI": "AI", "IA": "ИИ", "IT": "IT", // ИИ is common for Russian AI
+                "Que veut dire 'CPU' ?": "Что означает 'CPU'?", "Central Processing Unit": "Центральный процессор", "Control Program Utility": "Control Program Utility", "Computer Program Unit": "Computer Program Unit",
+                "Quel est le langage le plus utilisé pour les applications mobiles Android ?": "Какой язык наиболее часто используется для мобильных приложений Android?", "Kotlin": "Kotlin", "Swift": "Swift", "Ruby": "Ruby",
+                "Que fait un antivirus ?": "Что делает антивирус?", "Il crée des virus": "Он создает вирусы", "Il protège l’ordinateur": "Он защищает компьютер", "Il nettoie l’écran": "Он чистит экран",
+                "Quelle entreprise a créé l’iPhone ?": "Какая компания создала iPhone?", "Google": "Google", "Apple": "Apple", "Samsung": "Samsung",
+                "Quel moteur de recherche est le plus utilisé ?": "Какой поисковой движок используется чаще всего?", "Bing": "Bing", "Yahoo": "Yahoo",
+            }
+        };
+        // --- Game State Variables --- (Declared outside DOMContentLoaded)
+        let currentPlayerIndex = 0;
+        let currentTheme = null;
+        let currentQuestion = null;
+        let isMysteryQuestion = false;
+        let answeredQuestions = [];
+        let isGameOver = false;
+        let questionTimer = null;
+        let timeLeft = 0;
+        let answerSwapInterval = null;
+        let isHighPrioMusicPlaying = false;
+
+        // --- Wait for DOM Ready ---
+        document.addEventListener('DOMContentLoaded', (event) => {
+            console.log("DOM fully loaded and parsed");
+
+            // --- DOM Element Variables (Fetched inside DOMContentLoaded) ---
+            const playerSetupSection = document.getElementById("player-setup");
+            const numPlayersInput = document.getElementById("num-players");
+            const playerNamesContainer = document.getElementById("player-names-container");
+            const startGameButton = document.getElementById("start-game-button");
+            const setupErrorDiv = document.getElementById("setup-error");
+            const gameContainer = document.getElementById("game-container");
+            const playersContainer = document.getElementById("players-container");
+            const questionContainer = document.getElementById("question-container");
+            const nextQuestionButton = document.getElementById("next-question-button");
+            const messageBox = document.getElementById("message-box");
+            const themeSelectionContainer = document.getElementById("theme-selection");
+            const timerDisplay = document.getElementById("timer-display");
+            const betContainer = document.getElementById("bet-container");
+            const betCheckbox = document.getElementById("bet-checkbox");
+            const backgroundAudio = document.getElementById('background-audio');
+            const highPriorityAudio = document.getElementById('high-priority-audio');
+            const volumeSlider = document.getElementById('volume-slider');
+
+            // --- Enhanced Essential Element Check ---
+            const elements = { playerSetupSection, numPlayersInput, playerNamesContainer, startGameButton, setupErrorDiv, gameContainer, playersContainer, questionContainer, nextQuestionButton, messageBox, themeSelectionContainer, timerDisplay, betContainer, betCheckbox, backgroundAudio, highPriorityAudio, volumeSlider };
+            let missingElement = false;
+            for (const key in elements) {
+                if (!elements[key]) {
+                    console.error(`CRITICAL ERROR: DOM element with ID '${key}' not found.`);
+                    missingElement = true;
+                }
+            }
+            if (missingElement) {
+                 if (document.body) document.body.innerHTML = "<h1 style='color:red; text-align:center; margin-top: 50px;'>Error loading game elements. Check console (F12).</h1>";
+                 return; // Stop execution
+            } else { console.log("All essential DOM elements verified."); }
+
+            // --- Sound Volume Logic ---
+            const VOLUME_STORAGE_KEY = 'quizGameVolume';
+            function setVolume(volumeLevel) {
+                if (backgroundAudio) backgroundAudio.volume = volumeLevel;
+                if (highPriorityAudio) highPriorityAudio.volume = volumeLevel;
+            }
+            function saveVolume(volumeLevel) { try { localStorage.setItem(VOLUME_STORAGE_KEY, volumeLevel); } catch (e) { console.warn("Could not save volume:", e); } }
+            function loadVolume() {
+                let savedVolume = 0.5; try { const sv = localStorage.getItem(VOLUME_STORAGE_KEY); if (sv !== null) { const pv = parseFloat(sv); if (!isNaN(pv) && pv >= 0 && pv <= 1) savedVolume = pv; } } catch (e) { console.warn("Could not load volume:", e); }
+                setVolume(savedVolume);
+                if (volumeSlider) volumeSlider.value = savedVolume * 100;
+            }
+
+            // --- Helper & Game Logic Functions ---
+            function showMessage(message, append = false) {
+                if (messageBox) {
+                    if (append) { messageBox.textContent += " " + message; } else { messageBox.textContent = message; }
+                } else { console.error("Message box not found"); }
+            }
+            function clearTimers() {
+                if (questionTimer) clearInterval(questionTimer); questionTimer = null;
+                if (answerSwapInterval) clearInterval(answerSwapInterval); answerSwapInterval = null;
+                if (timerDisplay) timerDisplay.textContent = "";
+            }
+            function createPlayerDisplay() {
+                 if (!playersContainer) return;
+                 playersContainer.innerHTML = "";
+                 players.forEach((player) => {
+                     const playerContainer = document.createElement("div"); playerContainer.className = "flex items-center gap-2 md:gap-4";
+                     const playerNameElement = document.createElement("div"); playerNameElement.className = "player-name w-16 md:w-20 font-medium text-gray-700 flex-shrink-0"; playerNameElement.textContent = player.name;
+                     const progressBarContainer = document.createElement("div"); progressBarContainer.className = "player-progress-bar";
+                     const progressBarFill = document.createElement("div"); progressBarFill.className = "progress-bar-fill";
+                     player.progressBarWidth = Math.min(100, (player.score / maxScore) * 100); progressBarFill.style.width = `${player.progressBarWidth}%`; progressBarContainer.appendChild(progressBarFill);
+                     const pointsDisplay = document.createElement("div"); pointsDisplay.className = "points-display ml-auto font-semibold text-gray-700 flex-shrink-0 text-sm md:text-base"; pointsDisplay.textContent = `${player.score} / ${maxScore}`;
+                     playerContainer.appendChild(playerNameElement); playerContainer.appendChild(progressBarContainer); playerContainer.appendChild(pointsDisplay); playersContainer.appendChild(playerContainer);
+                 });
+             }
+            function updateScoreDisplay(playerIndex) {
+                 if (!playersContainer || playerIndex < 0 || playerIndex >= playersContainer.children.length || !players[playerIndex]) return;
+                 const player = players[playerIndex];
+                 if (player.score < 0) player.score = 0;
+                 player.progressBarWidth = Math.min(100, (player.score / maxScore) * 100);
+                 const playerRow = playersContainer.children[playerIndex];
+                 if (playerRow) {
+                     const progressBarFill = playerRow.querySelector(".progress-bar-fill");
+                     const pointsDisplayElement = playerRow.querySelector(".points-display");
+                     if (progressBarFill) progressBarFill.style.width = `${player.progressBarWidth}%`;
+                     if (pointsDisplayElement) pointsDisplayElement.textContent = `${player.score} / ${maxScore}`;
+                 }
+            }
+            function selectQuestion() {
+                if (!currentTheme || currentTheme.name === "Mystery") return null;
+                const themeQuestions = currentTheme.questions || [];
+                const availableQuestions = themeQuestions.filter(q => !answeredQuestions.includes(q.text));
+                if (availableQuestions.length === 0) return null;
+                const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+                const selectedQuestion = availableQuestions[randomIndex];
+                answeredQuestions.push(selectedQuestion.text);
+                isMysteryQuestion = false;
+                return selectedQuestion;
+            }
+            function selectMysteryQuestion() {
+                console.log("Selecting Mystery Question...");
+                const standardThemes = themes.filter(t => t.name !== "Mystery" && t.questions && t.questions.length > 0);
+                if (standardThemes.length === 0) { showMessage("No standard themes available for Mystery Box!"); return null; }
+                let attempts = 0; const maxAttempts = standardThemes.length * 3;
+                while(attempts < maxAttempts) {
+                    const randomThemeIndex = Math.floor(Math.random() * standardThemes.length);
+                    const randomTheme = standardThemes[randomThemeIndex];
+                    const availableQuestions = randomTheme.questions.filter(q => !answeredQuestions.includes(q.text));
+                    if (availableQuestions.length > 0) {
+                        const randomQuestionIndex = Math.floor(Math.random() * availableQuestions.length);
+                        const selectedQuestion = availableQuestions[randomQuestionIndex];
+                        answeredQuestions.push(selectedQuestion.text);
+                        currentTheme = randomTheme; // Set theme for context
+                        isMysteryQuestion = true;
+                        console.log(`Mystery Question selected from theme: ${randomTheme.name}`);
+                        return selectedQuestion;
+                    }
+                    attempts++;
+                }
+                showMessage("Couldn't find an unanswered question for the Mystery Box!");
+                console.warn("Mystery Box: No unanswered questions found after multiple attempts.");
+                return null;
+            }
+            function reverseWordsInString(str) { return str.split(' ').map(word => word.split('').reverse().join('')).join(' '); }
+            function applyMalusToQuestion(question, malusType) {
+                 // Create a deep copy to avoid modifying the original `themes` object
+                 let modifiedQuestion = JSON.parse(JSON.stringify(question));
+                 // Store original text/options for translation lookup & comparison
+                 modifiedQuestion.originalText = question.text;
+                 modifiedQuestion.originalOptions = [...question.options];
+                 modifiedQuestion.originalCorrectAnswer = question.correctAnswer;
+
+                 let message = "";
+                 // Define available languages for Malus Type 2
+                 const availableLanguages = ['es', 'zh', 'ru']; // Ensure these match keys in translations
+
+                 try {
+                     switch (malusType) {
+                         case 2: // Random Foreign Language
+                             const selectedLang = availableLanguages[Math.floor(Math.random() * availableLanguages.length)];
+                             let langName = selectedLang.toUpperCase();
+                             if (selectedLang === 'es') langName = 'Spanish';
+                             if (selectedLang === 'zh') langName = 'Mandarin';
+                             if (selectedLang === 'ru') langName = 'Russian';
+
+                             const langDict = translations[selectedLang] || {};
+
+                             // --- Perform individual translations with fallbacks ---
+                             const translatedText = langDict[modifiedQuestion.originalText] || modifiedQuestion.originalText;
+                             const translatedOptions = modifiedQuestion.originalOptions.map(opt => langDict[opt] || opt);
+                             const translatedCorrectAnswer = langDict[modifiedQuestion.originalCorrectAnswer] || modifiedQuestion.originalCorrectAnswer;
+
+                             // --- Update the question object REGARDLESS of translation success ---
+                             // This ensures partially translated options are included
+                             modifiedQuestion.text = translatedText;
+                             modifiedQuestion.options = translatedOptions;
+                             modifiedQuestion.correctAnswer = translatedCorrectAnswer;
+
+                             // --- Set the message based on translation success ---
+                             if (modifiedQuestion.text !== modifiedQuestion.originalText) {
+                                 // Main question text was translated (options might also be)
+                                 message = `Malus: Question en ${langName}!`;
+                             } else {
+                                 // Main question text translation FAILED, but options might be translated.
+                                 message = `Malus: Traduction ${langName} du texte principal manquante. Affichage partiel possible.`;
+                                 console.warn(`Malus 2 (${selectedLang}): Traduction du TEXTE manquante pour:`, modifiedQuestion.originalText);
+
+                                 // Optional: Check if any option *was* translated to confirm partial success
+                                 let optionsTranslated = modifiedQuestion.options.some((opt, i) => opt !== modifiedQuestion.originalOptions[i]);
+                                 if (optionsTranslated) {
+                                     console.log(`Malus 2 (${selectedLang}): Au moins une option a été traduite.`);
+                                     // You could slightly alter the message here if needed, but the current one implies partial is possible.
+                                 } else {
+                                      console.warn(`Malus 2 (${selectedLang}): Aucune option traduite non plus pour:`, modifiedQuestion.originalText);
+                                      // Refine message if absolutely nothing worked
+                                      message = `Malus: Tentative traduction ${langName} échouée (aucune traduction trouvée).`;
+                                 }
+                             }
+                             break; // End of case 2
+
+                         case 3: // Reverse Answers (operates on potentially translated options)
+                             modifiedQuestion.options = modifiedQuestion.options.map(option => option.split("").reverse().join(""));
+                             modifiedQuestion.correctAnswer = modifiedQuestion.correctAnswer.split("").reverse().join("");
+                             message = "Malus: Réponses inversées!";
+                             break;
+
+                         case 4: // Reverse Question Words (operates on potentially translated text)
+                             modifiedQuestion.text = reverseWordsInString(modifiedQuestion.text);
+                             message = "Malus: Mots de la question inversés!";
+                             break;
+
+                         case 5: // Answer Swapping (handled by startAnswerSwapping)
+                             message = "Malus: Réponses permutées!";
+                             break;
+
+                         default:
+                             console.warn("applyMalusToQuestion called with invalid type:", malusType);
+                             // Return original question if type is invalid
+                             return question;
+                     }
+                 } catch (error) {
+                    console.error("Error applying malus:", error, "Q:", question, "Type:", malusType);
+                    message = "Erreur application malus!";
+                    // Return original question on error to prevent breaking game flow
+                    modifiedQuestion = JSON.parse(JSON.stringify(question));
+                 }
+
+                 // Show the message determined above
+                 showMessage(message);
+                 // Return the modified question object (which contains the translations/fallbacks)
+                 return modifiedQuestion;
+            }
+            function startAnswerSwapping(container) {
+                clearTimers(); if (!container || container.children.length < 2) return;
+                answerSwapInterval = setInterval(() => {
+                     if (!container || container.children.length < 2 || isGameOver || !answerSwapInterval) { clearInterval(answerSwapInterval); answerSwapInterval = null; return; }
+                     let buttons = Array.from(container.children); for (let i = buttons.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [buttons[i], buttons[j]] = [buttons[j], buttons[i]]; } buttons.forEach(button => container.appendChild(button));
+                 }, answerSwapTime);
+            }
+            function displayQuestion() {
+                 clearTimers();
+                 if (!questionContainer || !themeSelectionContainer || !betContainer || !timerDisplay) {
+                     console.error("Display Question: Missing required containers"); return;
+                 }
+
+                 questionContainer.innerHTML = "";
+                 themeSelectionContainer.style.display = 'none'; themeSelectionContainer.innerHTML = "";
+                 betContainer.style.display = 'none';
+
+                 if (!currentQuestion) {
+                     if (isGameOver) return;
+                     console.error("displayQuestion called without a currentQuestion.");
+                     showMessage("Erreur affichage question."); handleEndOfTurn(); return;
+                 }
+
+                 let questionToDisplay = JSON.parse(JSON.stringify(currentQuestion));
+                 const player = players[currentPlayerIndex];
+                 let malus5Active = false;
+
+                 // --- Apply Pending Malus Effect (Types 2-5) ---
+                 if (player.activeMalusType && player.activeMalusType > 1) {
+                     console.log(`Applying Malus Type ${player.activeMalusType} to question for ${player.name}`);
+                     questionToDisplay = applyMalusToQuestion(questionToDisplay, player.activeMalusType);
+                     if (player.activeMalusType === 5) { malus5Active = true; }
+                 }
+
+                 // --- Display Question Text ---
+                 const questionText = document.createElement("h2");
+                 questionText.className = "text-lg md:text-xl font-semibold mb-4 text-gray-700";
+                 questionText.textContent = questionToDisplay.text;
+                 questionContainer.appendChild(questionText);
+
+                 // --- Display Bet Checkbox ---
+                 if(betCheckbox) { betCheckbox.checked = false; betCheckbox.disabled = false; }
+                 betContainer.style.display = 'block';
+
+                 // --- Display Options ---
+                 const optionsContainer = document.createElement("div");
+                 optionsContainer.className = "space-y-2";
+                 questionToDisplay.options.forEach(optionText => {
+                     const optionButton = document.createElement("button");
+                     optionButton.className = "answer-button";
+                     optionButton.textContent = optionText;
+                     optionButton.dataset.optionValue = optionText;
+                     optionButton.addEventListener("click", () => handleAnswer(questionToDisplay.correctAnswer, optionText));
+                     optionsContainer.appendChild(optionButton);
+                 });
+                 questionContainer.appendChild(optionsContainer);
+
+                 // --- Start Answer Swapping (if Malus 5) ---
+                 if (malus5Active) { startAnswerSwapping(optionsContainer); }
+
+                 // --- Calculate Adjusted Time Limit ---
+                 const scoreBasedReduction = player.score * timeReductionPerPoint;
+                 let adjustedTimeLimit = baseQuestionTimeLimit - scoreBasedReduction;
+                 // Ensure time doesn't go below minimum and round to nearest whole second
+                 let finalTimeLimit = Math.max(minQuestionTimeLimit, Math.round(adjustedTimeLimit));
+                 console.log(`Player: ${player.name}, Score: ${player.score}, BaseTime: ${baseQuestionTimeLimit}, Reduction: ${scoreBasedReduction.toFixed(1)}, Final Time: ${finalTimeLimit}s`);
+                 // ---
+
+                 // --- Start Question Timer ---
+                 timeLeft = finalTimeLimit; // Use the calculated time limit
+                 timerDisplay.textContent = `Temps: ${timeLeft}`;
+                 questionTimer = setInterval(() => {
+                     timeLeft--;
+                     timerDisplay.textContent = `Temps: ${timeLeft}`;
+                     if (timeLeft <= 0) {
+                         handleTimeout(questionToDisplay.correctAnswer);
+                     }
+                 }, 1000);
+
+                 if (nextQuestionButton) nextQuestionButton.style.display = "none";
+            }
+            function handleAnswer(correctAnswer, selectedOption) {
+                if (isGameOver || !currentQuestion) return; clearTimers(); document.querySelectorAll('.answer-button').forEach(btn => btn.disabled = true); if(betCheckbox) betCheckbox.disabled = true;
+                const player = players[currentPlayerIndex]; const wasCorrect = selectedOption === correctAnswer; const isBetting = betCheckbox && betCheckbox.checked; let scoreChange = 0; let message = "";
+                if (wasCorrect) { scoreChange = isBetting ? pointsPerCorrectAnswer * 2 : pointsPerCorrectAnswer; message = isBetting ? `Correct! Quitte ou Double RÉUSSI! +${scoreChange} points!` : `Correct! +${scoreChange} points.`; player.correctAnswers++;
+                } else { scoreChange = isBetting ? -pointsPerCorrectAnswer : 0; message = isBetting ? `Pari incorrect! ÉCHEC! ${scoreChange} points! Correct: ${correctAnswer}.` : `Incorrect! Correct: ${correctAnswer}.`; }
+                player.score += scoreChange;
+                if (wasCorrect && isMysteryQuestion) {
+                    const opponentIndex = (currentPlayerIndex + 1) % players.length;
+                    if (players[opponentIndex]) {
+                        const malusChoice = Math.floor(Math.random() * 5) + 1;
+                        switch(malusChoice) {
+                            case 1: players[opponentIndex].score -= malusPoints; message += ` Mystery Box! ${players[opponentIndex].name} perd ${malusPoints} points!`; updateScoreDisplay(opponentIndex); break;
+                            default: players[opponentIndex].pendingMalusType = malusChoice; message += ` Mystery Box! ${players[opponentIndex].name} subit un malus (Type ${malusChoice}) au prochain tour!`; console.log(`Setting pending malus type ${malusChoice} for ${players[opponentIndex].name}`); break;
+                        }
+                    }
+                }
+                showMessage(message); updateScoreDisplay(currentPlayerIndex); isMysteryQuestion = false;
+                if (!isHighPrioMusicPlaying && player.score >= scoreThresholdForMusicChange) {
+                    console.log(`Player ${player.name} reached ${scoreThresholdForMusicChange} points! Changing music.`);
+                    if (backgroundAudio) backgroundAudio.pause();
+                    if (highPriorityAudio && highPriorityAudio.src && highPriorityAudio.src !== window.location.href) { // Added check for valid src
+                        const currentVolume = volumeSlider ? volumeSlider.value / 100 : 0.5; highPriorityAudio.volume = currentVolume;
+                        highPriorityAudio.play().then(() => { console.log("High priority music started."); isHighPrioMusicPlaying = true; }).catch(error => { console.warn("High priority audio playback failed:", error); if (backgroundAudio) { backgroundAudio.play().catch(e => console.warn("Fallback audio also failed", e)); } });
+                    } else { console.warn("High priority audio element not found or src invalid/not set."); if (backgroundAudio && backgroundAudio.paused) { backgroundAudio.play().catch(e => {}); } } // Try resuming default if high-prio fails and default is paused
+                }
+                if (player.score >= maxScore) { declareWinner(currentPlayerIndex); return; }
+                handleEndOfTurn();
+            }
+            function handleTimeout(correctAnswer) {
+                 if (isGameOver || !currentQuestion) return; clearTimers(); showMessage(`Temps écoulé, ${players[currentPlayerIndex].name}! Correct: ${correctAnswer}.`); document.querySelectorAll('.answer-button').forEach(btn => btn.disabled = true); if(betCheckbox) betCheckbox.disabled = true; isMysteryQuestion = false; handleEndOfTurn();
+            }
+            function handleEndOfTurn() {
+                console.log("End of Turn"); clearTimers(); currentQuestion = null;
+                if (players[currentPlayerIndex]) { players[currentPlayerIndex].activeMalusType = null; }
+                if (nextQuestionButton) { nextQuestionButton.style.display = "block"; nextQuestionButton.textContent = "Tour Suivant"; }
+                if (betContainer) betContainer.style.display = 'none'; if (betCheckbox) betCheckbox.disabled = false;
+            }
+            function handleEndOfTheme() { showMessage(`Plus de questions disponibles dans le thème ${currentTheme?.name || 'sélectionné'} pour le moment.`); handleEndOfTurn(); }
+            function declareWinner(winnerIndex = -1) {
+                console.log("Declaring Winner"); clearTimers(); isGameOver = true;
+                if (questionContainer) questionContainer.innerHTML = ""; if (themeSelectionContainer) themeSelectionContainer.innerHTML = "";
+                if (nextQuestionButton) nextQuestionButton.style.display = "none"; if (timerDisplay) timerDisplay.textContent = ""; if (betContainer) betContainer.style.display = 'none';
+                if (winnerIndex === -1) { let highScore = -Infinity; let winners = []; players.forEach((p, i) => { if (p.score > highScore) { highScore = p.score; winners = [i]; } else if (p.score === highScore) { winners.push(i); } }); if (winners.length === 1) winnerIndex = winners[0]; else if (winners.length > 1) winnerIndex = -2; else winnerIndex = -3; }
+                if (winnerIndex >= 0) showMessage(`Fin de la partie! ${players[winnerIndex].name} gagne avec ${players[winnerIndex].score} points!`);
+                else if (winnerIndex === -2) showMessage(`Fin de la partie! Égalité à ${players.length > 0 ? players[0].score : 0} points!`);
+                else showMessage("Fin de la partie!");
+                if(backgroundAudio) backgroundAudio.pause(); if(highPriorityAudio) highPriorityAudio.pause(); // Stop both musics
+            }
+            function generateNameInputs() {
+                console.log("Running generateNameInputs...");
+                if (!numPlayersInput || !playerNamesContainer) { console.error("generateNameInputs ERROR: Elements missing."); return; }
+                const num = parseInt(numPlayersInput.value); playerNamesContainer.innerHTML = '';
+                if (num >= 2 && num <= 4) {
+                    for (let i = 1; i <= num; i++) {
+                        const div = document.createElement('div');
+                        const label = document.createElement('label'); label.htmlFor = `player-name-${i}`; label.textContent = `Nom Joueur ${i} :`; label.className = "block mb-1 text-sm font-medium text-gray-700";
+                        const input = document.createElement('input'); input.type = 'text'; input.id = `player-name-${i}`; input.name = `player-name-${i}`; input.placeholder = `Entrez le nom du Joueur ${i}`; input.required = true; input.className = "shadow-sm border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500 focus:ring-1 focus:ring-blue-500"; // Added more specific styles
+                        div.appendChild(label); div.appendChild(input); playerNamesContainer.appendChild(div);
+                    }
+                }
+            }
+            function handleStartGame() {
+                console.log("Attempting to start game..."); isHighPrioMusicPlaying = false; if (highPriorityAudio) { highPriorityAudio.pause(); highPriorityAudio.currentTime = 0; } if (backgroundAudio) { backgroundAudio.currentTime = 0; }
+                if (!numPlayersInput || !playerNamesContainer || !setupErrorDiv || !playerSetupSection || !gameContainer) { console.error("Start Game ERROR: Missing elements."); if(setupErrorDiv) setupErrorDiv.textContent = 'Erreur config.'; return; }
+                const numPlayers = parseInt(numPlayersInput.value); const nameInputs = playerNamesContainer.querySelectorAll('input[type="text"]'); let allNamesEntered = true; const playerNames = []; setupErrorDiv.textContent = ''; console.log(`Start Game: Found ${nameInputs.length} name fields.`);
+                if (nameInputs.length !== numPlayers) { setupErrorDiv.textContent = 'Erreur: Nb champs nom != nb joueurs.'; console.error(`Start Game ERROR: Input count mismatch.`); return; }
+                nameInputs.forEach((input, index) => { const name = input.value.trim(); if (!name) { allNamesEntered = false; input.classList.add('border-red-500'); } else { input.classList.remove('border-red-500'); } playerNames.push(name || `Joueur ${index + 1}`); });
+                if (!allNamesEntered) { setupErrorDiv.textContent = 'Entrez un nom pour tous les joueurs.'; return; } playerNamesContainer.querySelectorAll('input[type="text"]').forEach(inp => inp.classList.remove('border-red-500'));
+                players = playerNames.map(name => ({ name: name, score: 0, progressBarWidth: 0, correctAnswers: 0, pendingMalusType: null, activeMalusType: null }));
+                isGameOver = false; currentPlayerIndex = 0; answeredQuestions = []; isMysteryQuestion = false;
+                playerSetupSection.style.display = 'none'; gameContainer.style.display = 'block'; createPlayerDisplay(); showMessage(`${players[currentPlayerIndex].name}, choisissez un thème.`); displayThemeSelection();
+                if (backgroundAudio && backgroundAudio.src && backgroundAudio.src !== window.location.href) { // Added check for valid src
+                     loadVolume(); backgroundAudio.play().then(() => console.log("Default music started.")).catch(error => { console.warn("Audio autoplay failed:", error); showMessage("Cliquez/Touchez l'écran pour activer l'audio.", true); const startAudioHandler = () => { backgroundAudio.play().catch(err => console.error("Audio still failed:", err)); document.body.removeEventListener('click', startAudioHandler); document.body.removeEventListener('touchstart', startAudioHandler); }; document.body.addEventListener('click', startAudioHandler, { once: true }); document.body.addEventListener('touchstart', startAudioHandler, { once: true }); });
+                } else { console.warn("Background audio not found or src invalid/not set."); }
+            }
+            function displayThemeSelection() {
+                console.log("Displaying Theme Selection"); clearTimers(); if (!questionContainer || !themeSelectionContainer || !betContainer || !nextQuestionButton) return;
+                questionContainer.innerHTML = ""; themeSelectionContainer.innerHTML = ""; themeSelectionContainer.style.display = 'grid'; betContainer.style.display = 'none'; nextQuestionButton.style.display = "none"; currentQuestion = null; currentTheme = null; isMysteryQuestion = false;
+                const mysteryTheme = themes.find(theme => theme.name === "Mystery"); const standardThemes = themes.filter(theme => theme.name !== "Mystery"); let themesToShow = [];
+                const standardThemesCopy = [...standardThemes]; const numStandardToSelect = Math.min(3, standardThemesCopy.length);
+                for (let i = 0; i < numStandardToSelect; i++) { if (standardThemesCopy.length === 0) break; const randomIndex = Math.floor(Math.random() * standardThemesCopy.length); themesToShow.push(standardThemesCopy.splice(randomIndex, 1)[0]); }
+                if (mysteryTheme) { themesToShow.push(mysteryTheme); } themesToShow.sort(() => Math.random() - 0.5);
+                themesToShow.forEach(theme => {
+                    const square = document.createElement("div"); square.className = "theme-square"; square.textContent = theme.name; const originalIndex = themes.findIndex(t => t.name === theme.name); if (originalIndex === -1) return; square.dataset.themeIndex = originalIndex; square.dataset.themeName = theme.name;
+                    square.addEventListener("click", () => {
+                        const selectedIndex = parseInt(square.dataset.themeIndex); const selectedThemeObject = themes[selectedIndex]; if (!selectedThemeObject) { showMessage("Erreur choix thème."); return; }
+                        themeSelectionContainer.style.display = 'none'; themeSelectionContainer.innerHTML = '';
+                        if (selectedThemeObject.name === "Mystery") { showMessage(`${players[currentPlayerIndex].name} choisit la Boîte Mystère!`); currentQuestion = selectMysteryQuestion(); }
+                        else { currentTheme = selectedThemeObject; showMessage(`${players[currentPlayerIndex].name} choisit ${currentTheme.name}.`); currentQuestion = selectQuestion(); }
+                        if (currentQuestion) { displayQuestion(); } else { handleEndOfTheme(); }
+                    });
+                    themeSelectionContainer.appendChild(square);
+                });
+            }
+
+            // --- Event Listeners Attachment ---
+            if (numPlayersInput) { numPlayersInput.addEventListener('input', generateNameInputs); } else { console.error("ERROR: numPlayersInput missing."); }
+            if (startGameButton) { startGameButton.addEventListener('click', handleStartGame); } else { console.error("ERROR: startGameButton missing."); }
+            if (nextQuestionButton) {
+                nextQuestionButton.addEventListener("click", () => {
+                     if (isGameOver) return; currentPlayerIndex = (currentPlayerIndex + 1) % players.length; const player = players[currentPlayerIndex]; let initialMessage = `${player.name}, c'est votre tour.`;
+                     if (player.pendingMalusType !== null) { console.log(`${player.name} activating pending malus type: ${player.pendingMalusType}`); player.activeMalusType = player.pendingMalusType; player.pendingMalusType = null; initialMessage += ` Attention, Malus entrant!`; } else { player.activeMalusType = null; }
+                     showMessage(initialMessage + " Choisissez un thème."); displayThemeSelection();
+                 });
+            } else { console.error("ERROR: nextQuestionButton missing."); }
+            if (volumeSlider) {
+                volumeSlider.addEventListener('input', () => { const newVolume = volumeSlider.value / 100; setVolume(newVolume); saveVolume(newVolume); });
+            } else { console.error("ERROR: volumeSlider missing."); }
+
+            // --- Initial Setup Calls ---
+            console.log("Running Initial Setup inside DOMContentLoaded...");
+            if (document.body) { if (isMobileDevice()) document.body.classList.add('is-mobile'); else document.body.classList.add('is-desktop'); } else { console.error("Document body not found during initial setup."); }
+            generateNameInputs(); // Generate inputs based on default value (2)
+            console.log("Initial call to generateNameInputs completed.");
+            loadVolume(); // Load and set volume
+            console.log("Script finished setup inside DOMContentLoaded.");
+
+        }); // --- End of DOMContentLoaded listener ---
+
+        console.log("Script execution finished (event listener attached).");
+
+    </script>
+</body>
+</html>
