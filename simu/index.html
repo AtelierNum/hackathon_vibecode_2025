@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu de Civilisation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Styles from Snippet 1 (Game Page) */
+        /* Styles de base pour le corps pour centrer le contenu */
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif; /* Utiliser la police Inter */
+            background-color: #FFFFFF; /* Background color from snippet 2 */
+            color: #333; /* Default text color */
+            min-height: 100vh; /* S'assure que le corps occupe au moins toute la hauteur de la fenêtre */
+            padding: 10px; /* Ajouter un peu de rembourrage autour du contenu */
+            box-sizing: border-box; /* Inclure le rembourrage dans la largeur et la hauteur totales de l'élément */
+            display: flex;
+            flex-direction: column; /* Default to column layout for easier centering/stacking */
+            align-items: center;
+            justify-content: flex-start; /* Start content from the top */
+        }
+
+        /* CSS for the game elements container */
+        #game-container {
+            display: flex;
+            flex-direction: row; /* Arrange game elements side-by-side */
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            justify-content: center;
+            align-items: flex-start; /* Align items to the top */
+            gap: 20px; /* Space between game elements */
+            width: 100%;
+            max-width: 1200px; /* Max width for game content */
+            margin-top: 20px; /* Space below menu/title */
+        }
+
+
+        /* CSS pour le canvas du jeu */
+        #gameCanvas {
+            background-color: #8FBC8F; /* Fond vert pour la terre */
+            display: block; /* Empêche l'espace supplémentaire sous le canvas */
+            cursor: pointer; /* Change le curseur au survol */
+            max-width: 800px; /* Largeur maximale du canvas (peut être ajusté si la grille est beaucoup plus grande) */
+            max-height: 600px; /* Hauteur maximale du canvas */
+            width: 100%; /* Permet au canvas de prendre toute la largeur disponible jusqu'à max-width */
+            height: auto; /* Permet à la hauteur de s'ajuster pour maintenir le rapport d'aspect */
+            aspect-ratio: 4 / 3; /* Maintient le rapport d'aspect 4:3 (correspondant à 80 cols / 60 rows) */
+            border-radius: 8px; /* Coins arrondis pour le canvas */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Ajouter une ombre subtile */
+            border: 1px solid #7C9F7C; /* Ajouter une bordure subtile */
+        }
+
+        /* Styles pour le conteneur des contrôles */
+        #controls {
+            display: flex;
+            flex-direction: column; /* Empiler les boutons verticalement */
+            gap: 10px; /* Espace entre les boutons */
+            padding: 10px; /* Ajouter un rembourrage */
+            background-color: rgba(255, 255, 255, 0.8); /* Fond semi-transparent */
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* Styles pour les boutons */
+        .button {
+            padding: 12px 20px; /* Rembourrage augmenté */
+            border: none;
+            border-radius: 8px; /* Coins plus arrondis */
+            background-color: #4CAF50; /* Couleur verte */
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background-color 0.3s ease, transform 0.1s ease; /* Ajouter une transition pour l'effet de pression */
+        }
+
+        .button:hover {
+            background-color: #367c39; /* Vert plus foncé au survol */
+        }
+
+        .button:active {
+            background-color: #2b5e2e; /* Vert encore plus foncé lorsqu'il est pressé */
+            transform: scale(0.98); /* Réduire légèrement le bouton lorsqu'il est pressé */
+        }
+
+        /* Styles pour la boîte de message */
+        #messageBox {
+            background-color: rgba(255, 255, 255, 0.9); /* Blanc semi-transparent */
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            z-index: 10; /* S'assurer qu'il est au-dessus des autres éléments */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            max-width: 90%; /* Limit width on smaller screens */
+            text-align: center;
+            margin-top: 20px; /* Add space above message box */
+            width: 100%; /* Take full width in column layout */
+        }
+
+        /* Styles pour le modal (Instructions) */
+        .modal {
+            display: none; /* Masqué par défaut */
+            position: fixed; /* Rester en place par rapport à la fenêtre */
+            z-index: 11; /* Se placer au-dessus de tout le reste */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        /* Styles pour le contenu du modal */
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 5px;
+            position: relative;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Styles pour le bouton de fermeture du modal */
+        .close-button {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            cursor: pointer;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+        }
+
+        /* Styles spécifiques pour le bouton d'instructions */
+        #instructionsButton { /* Game instructions button */
+            background-color: #008CBA; /* Couleur bleue */
+        }
+
+        #instructionsButton:hover {
+            background-color: #007ba7; /* Bleu plus foncé au survol */
+        }
+
+        /* Styles pour l l'affichage des caractéristiques */
+        #characteristicsDisplay {
+            color: #333; /* Couleur gris foncé */
+            font-size: 16px;
+            padding: 15px; /* Rembourrage augmenté */
+            border-radius: 8px; /* Coins plus arrondis */
+            background-color: rgba(255, 255, 255, 0.8); /* Blanc semi-transparent */
+            width: 220px; /* Largeur ajustée */
+            word-wrap: break-word; /* Permet aux longs mots de se casser */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: flex; /* Use flexbox for the display content */
+            flex-direction: column; /* Stack content vertically */
+            gap: 5px; /* Space between stat lines */
+        }
+
+        /* Styles for individual stat lines */
+         #characteristicsDisplay p {
+            margin: 0; /* Remove default paragraph margin */
+         }
+
+        /* Ajustements réactifs pour les petits écrans */
+        @media (max-width: 900px) {
+             #game-container {
+                 flex-direction: column; /* Stack game elements vertically */
+                 align-items: center; /* Center them */
+                 gap: 10px; /* Adjust gap */
+             }
+
+            #gameCanvas {
+                max-width: 95%;
+            }
+
+            #controls {
+                width: 95%;
+            }
+
+            #characteristicsDisplay {
+                width: 95%;
+            }
+             #messageBox {
+                 width: 95%;
+                 order: 100; /* Push message box to the bottom */
+             }
+
+             .modal-content {
+                width: 90%;
+                margin: 10% auto;
+             }
+        }
+
+
+        /* Styles from Snippet 2 (Menu Page) */
+        /* Style for the modal content to handle line breaks */
+        #instructions-modal-content .text-column p {
+            white-space: pre-wrap; /* Preserve whitespace and line breaks */
+        }
+
+        /* Style for the link (now button) to make it look like a button */
+        .button-link {
+            display: inline-block;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        /* Make the number and arrows clickable/interactive */
+        #civ-number, .arrow-button {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Style for the arrows */
+        .arrow-button {
+            display: block;
+            text-align: center;
+            font-size: 0.8em;
+            line-height: 1;
+            margin: 2px 0;
+        }
+
+        /* Add transition for smooth animation on the small color squares */
+        .small-color-square {
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+
+        /* Define hover effect for the small color squares */
+        .small-color-square:hover {
+            transform: scale(1.2) rotate(5deg);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Additional styles to manage layout of combined content */
+        /* Container for the menu elements */
+        #menu-container {
+            display: flex; /* Initially visible */
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            width: 95%;
+            max-width: 400px; /* Max width for menu */
+            margin: 0 auto; /* Center the menu container */
+        }
+
+         /* Adjust positioning of the large color square and small squares within the menu */
+        #menu-color-picker {
+             display: flex;
+             flex-direction: column;
+             align-items: center;
+             gap: 10px;
+        }
+
+        #menu-color-picker #large-square {
+            margin: 0 auto;
+        }
+         #menu-color-picker #small-squares-container {
+             flex-wrap: wrap;
+             justify-content: center;
+         }
+         #menu-color-picker .small-color-square {
+             margin: 5px;
+         }
+
+
+    </style>
+</head>
+<body>
+
+    <div id="menu-container">
+         <div class="bg-gray-700 p-4 rounded-lg shadow-md w-full">
+             <h1 class="text-4xl font-bold text-blue-400 text-center">Civilization Simulator</h1>
+         </div>
+
+         <div class="flex flex-col items-center">
+             <span class="text-9xl font-extrabold flex flex-col items-center" style="color: #000000">
+                 <span id="arrow-up" class="arrow-button">&uarr;</span>
+                 <span class="flex items-center">
+                     <span id="civ-number">2</span>civ
+                 </span>
+                 <span id="arrow-down" class="arrow-button">&darr;</span>
+             </span>
+         </div>
+
+         <button
+              id="start-game-button"
+              class="px-20 py-10 bg-green-600 text-white font-bold rounded-full shadow-lg hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105 text-2xl button-link">
+              Start New Game
+         </button>
+
+         <div id="menu-color-picker">
+             <div id="large-square" class="w-24 h-24 rounded-lg shadow-lg cursor-pointer" style="background-color: #0000FF">
+             </div>
+
+             <div id="small-squares-container" class="flex mt-4 flex-wrap justify-center">
+                 <div class="small-color-square w-12 h-12 rounded-lg shadow-md mr-2 cursor-pointer" style="background-color: #EC4899;"></div>
+                 <div class="small-color-square w-12 h-12 rounded-lg shadow-md mr-2 cursor-pointer" style="background-color: #A78BFA;"></div>
+                 <div class="small-color-square w-12 h-12 rounded-lg shadow-md mr-2 cursor-pointer" style="background-color: #A0522D;"></div>
+                 <div class="small-color-square w-12 h-12 rounded-lg shadow-md mr-2 cursor-pointer" style="background-color: #000000;"></div>
+                 <div class="small-color-square w-12 h-12 rounded-lg shadow-md cursor-pointer" style="background-color: #FFFFFF;"></div>
+             </div>
+         </div>
+
+         <button id="show-menu-instructions-button" class="px-12 py-9 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 ease-in-out text-xl button-link">
+              Instructions (Menu)
+         </button>
+
+     </div>
+
+     <div id="instructions-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+         <div id="instructions-modal-content" class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-5xl w-5/6 md:w-full text-gray-200 relative">
+             <button id="close-instructions-modal" class="absolute top-3 right-3 text-gray-400 hover:text-gray-200 text-xl">&times;</button>
+             <h2 class="text-2xl font-bold mb-4 text-blue-400 text-center">Instructions (Menu)</h2>
+             <div class="flex flex-col md:flex-row gap-6">
+                 <div class="text-column md:w-1/2">
+                     <p>
+                         Bienvenue ! Ceci est une simulation simple de civilisations s'étendant sur une carte.
+
+                         Choisissez le nombre de civilisations (entre 2 et 6) en cliquant sur les flèches ou en utilisant la molette de la souris sur le nombre central.
+                         Cliquez sur les petits carrés de couleur pour choisir la couleur de la civilisation bleue (celle que vous contrôlez l'emplacement de départ).
+
+                         Cliquez sur "Start New Game" pour démarrer la simulation avec les paramètres choisis.
+                         Cliquez sur "Instructions (Menu)" pour voir ce message.
+                     </p>
+                 </div>
+                 <div class="text-column md:w-1/2">
+                     <p>
+                         Une fois en jeu, vous pourrez:
+                         Démarrer : Lance ou reprend la simulation.
+                         Pause : Arrête la simulation.
+                         Réinitialiser : Efface la carte et recommence une nouvelle simulation (retour au menu).
+                         Instructions : Affiche les instructions du jeu.
+
+                         La zone verte représente la terre. Les civilisations se déplacent, mangent des pommes (reproduction) et des carottes (vitesse). Les murs bloquent le mouvement.
+                         Les statistiques de la civilisation bleue sont affichées.
+
+                         Ouvrez la console développeur (généralement F12) pour voir les événements.
+                     </p>
+                 </div>
+             </div>
+         </div>
+     </div>
+
+
+    <div id="game-container" style="display: none;"> <canvas id="gameCanvas"></canvas>
+        <div id="controls">
+            <button id="startButton" class="button">Démarrer</button>
+            <button id="pauseButton" class="button">Pause</button>
+            <button id="resetButton" class="button">Réinitialiser</button>
+            <button id="instructionsButton" class="button">Instructions</button>
+        </div>
+
+        <div id="characteristicsDisplay">
+            <p><strong>Statistiques:</strong></p>
+             <p>Blue Population: <span id="bluePopulation">0</span></p>
+             <p>Blue Speed: <span id="blueSpeed">N/A</span></p>
+             <p>Purple Population: <span id="purplePopulation">0</span></p>
+              <p>Purple Speed: <span id="purpleSpeed">N/A</span></p>
+                <p>Black Population: <span id="blackPopulation">0</span></p>
+              <p>Black Speed: <span id="blackSpeed">N/A</span></p>
+                <p>Green Population: <span id="greenPopulation">0</span></p>
+              <p>Green Speed: <span id="greenSpeed">N/A</span></p>
+        </div>
+
+        <div id="messageBox">Bienvenue au jeu de civilisation !</div>
+    </div>
+
+
+    <div id="gameInstructionsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">×</span>
+            <h2>Comment jouer (Jeu)</h2>
+            <p>
+                Ceci est une simple simulation de civilisations s'étendant sur une carte verte.
+            </p>
+            <ol>
+                 <li><strong>Choisir l'emplacement de la civilisation bleue :</strong> Avant de cliquer sur "Démarrer", cliquez n'importe où sur la grille verte pour définir le point de départ de la civilisation bleue.</li>
+                 <li><strong>Démarrer :</strong> Cliquez sur le bouton "Démarrer" pour commencer la simulation. Si vous n'avez pas choisi d'emplacement, la civilisation bleue apparaîtra aléatoirement.</li>
+                 <li><strong>Pause :</strong> Cliquez sur "Pause" pour arrêter la simulation.</li>
+                 <li><strong>Réinitialiser :</strong> Cliquez sur "Réinitialiser" pour effacer la carte et recommencer (retour au menu).</li>
+                 <li><strong>Instructions:</strong> Cliquez sur "Instructions" pour voir ce message à nouveau.</li>
+            </ol>
+            <p>
+                La zone verte représente la terre. Quatre civilisations (carrés bleus, violets, noirs et verts) se déplaceront sur la carte, mangeant des pommes (carrés rouges) pour se reproduire et des carottes (carrés jaunes) pour augmenter leur vitesse. Des murs (carrés gris foncé) bloquent le mouvement.
+            </p>
+            <p>
+                Les pommes et les carottes ne réapparaissent pas une fois mangées. Quand une pomme est mangée, une nouvelle unité de civilisation apparaît sur un *tile voisin libre*. Chaque unité de civilisation essaiera de cibler **une seule nourriture (pomme ou carotte) disponible à la fois** dans son rayon de détection (visible dans la console). Une fois qu'une nourriture est ciblée par une unité, les autres unités chercheront une autre nourriture disponible. Chaque civilisation commence avec une seule unité répartie sur la carte.
+            </p>
+            <p>Amusez-vous avec la simulation !</p>
+            <p>Ouvrez la console développeur (généralement F12) pour voir les événements de collision et de consommation.</p>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Game Variables and Elements (from Snippet 1) ---
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('startButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const resetButton = document.getElementById('resetButton');
+        const messageBox = document.getElementById('messageBox');
+        const instructionsButton = document.getElementById('instructionsButton'); // Game instructions button
+        const gameInstructionsModal = document.getElementById('gameInstructionsModal'); // Game instructions modal
+        const gameCloseButton = gameInstructionsModal ? gameInstructionsModal.querySelector('.close-button') : null;
+
+        // Get the elements for displaying characteristics
+        const bluePopulationDisplay = document.getElementById('bluePopulation');
+        const blueSpeedDisplay = document.getElementById('blueSpeed');
+        const purplePopulationDisplay = document.getElementById('purplePopulation');
+        const purpleSpeedDisplay = document.getElementById('purpleSpeed');
+        const blackPopulationDisplay = document.getElementById('blackPopulation');
+        const blackSpeedDisplay = document.getElementById('blackSpeed');
+        const greenPopulationDisplay = document.getElementById('greenPopulation');
+        const greenSpeedDisplay = document.getElementById('greenSpeed');
+
+
+        let animationFrameId; // ID for the animation frame
+        let isRunning = false; // Flag to indicate if the game is running
+        let lastFrameTime = 0; // Timestamp of the last animation frame
+
+        let civilizations = []; // Array to store data for ALL civilization units
+        let apples = []; // Array to store positions and state of red apples
+        let carrots = []; // Array to store positions and state of yellow carrots
+        let walls = []; // Array to store data for dark grey wall segments
+
+        let numRows; // Number of rows in the grid
+        let numCols; // Number of columns in the grid
+        let cellSize; // Size of each cell in pixels - THIS IS KEY FOR VISUAL SCALING
+
+        // --- Player Interaction Variables ---
+        let playerSpawnRow = -1; // Stores the chosen row for blue civ
+        let playerSpawnCol = -1; // Stores the chosen col for blue civ
+        let hasPlayerPlacedBlue = false; // Flag to know if player clicked a spot
+
+        // Store the *final* determined start positions (one per civ type) after checks
+        let finalCivStartPoints = [];
+
+        // Game Parameters
+        const baseMoveInterval = 600; // Base time in ms between each potential move (smaller = faster game)
+        const initialSpeedBaseMultiplier = 1.0; // Initial speed: 1.0 means 1 tile per base interval
+        const carrotSpeedIncreaseMultiplier = 0.15; // Each carrot adds this value to the speed multiplier
+        const detectionRadius = 15; // Manhattan distance radius for finding food
+
+        // Define the civilization types to spawn (each will start with 1 unit initially)
+        // This list will be dynamically adjusted based on the number chosen in the menu
+        const allCivTypes = [
+             { color: '#0000FF', name: 'Blue' },
+             { color: '#EC4899', name: 'Pink' },
+             { color: '#A78BFA', name: 'Purple'},
+             { color: '#A0522D', name: 'Orange' },
+             { color: '#000000', name: 'Black' },
+             { color: '#FFFFFF', name: 'White' }
+         ];
+        let civTypesToSpawnThisGame = []; // This will be populated from the menu choice
+
+        // Initialization Parameters (continued from snippet 1)
+         const numInitialApples = 40; // Number of apples to generate
+         const numInitialCarrots = 25; // Number of carrots to generate
+         const numInitialWalls = 7; // Number of wall segments to generate
+         const minWallLength = 5; // Minimum segments per wall
+         const maxWallLength = 15; // Maximum segments per wall
+         const minStartingDistance = 25; // Minimum Manhattan distance between the initial spawn points of different civ types
+         const startingZoneRadius = 6; // Radius around primary start points walls should avoid
+
+
+        // --- Game Functions (Placeholders / Partial Implementations) ---
+
+        // Function to calculate Manhattan distance between two points
+        function getManhattanDistance(pos1, pos2) {
+             return Math.abs(pos1.row - pos2.row) + Math.abs(pos2.col - pos1.col);
+        }
+
+        // Function to resize the canvas
+        function resizeCanvas() {
+             const container = document.getElementById('game-container'); // Use the game container for reference
+             if (!container) {
+                 console.error("Game container not found!");
+                 return;
+             }
+             const maxWidth = 800;
+             const maxHeight = 600;
+             numRows = 60;
+             numCols = 80;
+             const aspectRatio = numCols / numRows;
+
+             // Get computed styles to include padding/border
+             const containerStyle = getComputedStyle(container);
+             let availableWidth = container.clientWidth - (parseFloat(containerStyle.paddingLeft) + parseFloat(containerStyle.paddingRight));
+             // In flex column, height might be unlimited, so use max height as a constraint or window height
+             let availableHeight = window.innerHeight - (parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom)) - (messageBox ? messageBox.offsetHeight + parseFloat(getComputedStyle(messageBox).marginTop) : 0) - (document.querySelector('h1') ? document.querySelector('h1').offsetHeight + parseFloat(getComputedStyle(document.querySelector('h1')).marginBottom) : 0); // Estimate available height considering other elements
+
+             let width, height;
+
+              const potentialWidthBasedOnHeight = availableHeight * aspectRatio;
+              const potentialHeightBasedOnWidth = availableWidth / aspectRatio;
+
+              if (potentialWidthBasedOnHeight <= availableWidth) {
+                  width = potentialWidthBasedOnHeight;
+                  height = availableHeight;
+              } else {
+                  width = availableWidth;
+                  height = potentialHeightBasedOnWidth;
+              }
+
+              width = Math.min(width, maxWidth);
+             height = Math.min(height, maxHeight);
+
+              if (Math.abs(width / height - aspectRatio) > 0.001) {
+                   if (width / height > aspectRatio) {
+                       width = height * aspectRatio;
+                    } else {
+                       height = width / aspectRatio;
+                    }
+              }
+
+             canvas.width = width;
+             canvas.height = height;
+             cellSize = canvas.width / numCols;
+             console.log(`Canvas resized to ${width}x${height}, CellSize: ${cellSize.toFixed(2)}`);
+
+             if (isRunning) {
+                 drawGame(); // Redraw game immediately if running
+             } else {
+                 // If not running, just draw the grid (e.g., after reset or initial setup)
+                 drawGrid();
+                 // If player has placed blue before starting, redraw the blue placement indicator
+                  if (hasPlayerPlacedBlue && playerSpawnRow !== -1 && playerSpawnCol !== -1) {
+                       ctx.fillStyle = 'rgba(0, 0, 255, 0.5)'; // Semi-transparent blue
+                       ctx.fillRect(playerSpawnCol * cellSize, playerSpawnRow * cellSize, cellSize, cellSize);
+                   }
+             }
+
+        }
+
+        // Function to prepare the game area (clears state, draws empty grid)
+        function prepareGameArea() {
+             numRows = 60;
+             numCols = 80;
+
+             civilizations = [];
+             apples = [];
+             carrots = [];
+             walls = [];
+             finalCivStartPoints = [];
+
+             playerSpawnRow = -1;
+             playerSpawnCol = -1;
+             hasPlayerPlacedBlue = false;
+
+             updateCharacteristicsDisplay();
+             displayMessage('Simulation réinitialisée. Choisissez un emplacement pour la civilisation bleue ou cliquez sur "Démarrer".');
+
+             resizeCanvas(); // Also draws the empty grid
+         }
+
+         // Function to fully initialize the game state (generate world, spawn initial units)
+         function initGame(numberOfCivsToSpawn = 4, playerChosenColor = '#0000FF') { // Added color parameter
+             console.log(`Initializing game with ${numberOfCivsToSpawn} civilizations. Player chosen color: ${playerChosenColor}`);
+
+             civilizations = [];
+             apples = [];
+             carrots = [];
+             walls = [];
+             finalCivStartPoints = [];
+
+             // Ensure the civTypesToSpawnThisGame list is updated based on the menu choice
+             civTypesToSpawnThisGame = allCivTypes.slice(0, numberOfCivsToSpawn);
+
+             // Find the index of the player's chosen color in the allCivTypes list
+             const chosenColorIndex = allCivTypes.findIndex(civ => civ.color === playerChosenColor);
+
+             // If the player chose a color that is not #0000FF (Blue) and that color is one of the civs being spawned,
+             // swap the chosen color with the default Blue color in the civTypesToSpawnThisGame list.
+             // This ensures the player-chosen color is associated with the 'Blue' civ type for spawning logic.
+             if (playerChosenColor !== '#0000FF' && chosenColorIndex !== -1 && chosenColorIndex < numberOfCivsToSpawn) {
+                  const blueIndex = civTypesToSpawnThisGame.findIndex(civ => civ.color === '#0000FF');
+                  if (blueIndex !== -1) {
+                       // Swap the color in the list that will be used for spawning
+                       const tempColor = civTypesToSpawnThisGame[blueIndex].color;
+                       civTypesToSpawnThisGame[blueIndex].color = playerChosenColor;
+                       // You might need to update the name as well if you want the stats display to match the chosen color
+                       // For simplicity, we'll keep the name 'Blue' associated with the player-controlled civ slot for stats display.
+                       // civTypesToSpawnThisGame[chosenColorIndex].color = tempColor; // Swap the color back for the other civ if needed
+                       console.log(`Swapped Blue color with player chosen color ${playerChosenColor} for initial spawn.`);
+                  } else {
+                      console.warn(`Blue civilization not found in the list of civs to spawn (${numberOfCivsToSpawn}). Player color choice might not be applied.`);
+                  }
+             }
+
+
+             const maxStartPosAttempts = 500;
+
+              const tempChosenStartPoints = [];
+
+             for (const civType of civTypesToSpawnThisGame) {
+                  let startRow, startCol;
+                  let startPosChosen = false;
+                  let attempts = 0;
+
+                  // Special handling for the Blue civilization (based on name, as color might be changed)
+                  if (civType.name === 'Blue' && hasPlayerPlacedBlue) {
+                      startRow = playerSpawnRow;
+                      startCol = playerSpawnCol;
+
+                        let tooCloseToOthersFoundSoFar = false;
+                        for (const otherStartPos of tempChosenStartPoints) {
+                             if (getManhattanDistance({row: startRow, col: startCol}, otherStartPos) < minStartingDistance) {
+                                tooCloseToOthersFoundSoFar = true;
+                                console.warn(`Player-chosen spot for Blue at (${startRow}, ${startCol}) is too close to a previously determined civ's start point.`);
+                                break;
+                             }
+                        }
+
+                        const initiallyOccupied = isOccupiedForPlacement(startRow, startCol);
+
+                      if (startRow >= 0 && startRow < numRows && startCol >= 0 && startCol < numCols && !tooCloseToOthersFoundSoFar && !initiallyOccupied) {
+                          startPosChosen = true;
+                          console.log(`Using player-chosen start point for Blue at (${startRow}, ${startCol})`);
+                      } else {
+                           hasPlayerPlacedBlue = false;
+                           if (initiallyOccupied) console.warn(`Player-chosen spot for Blue at (${startRow}, ${startCol}) was surprisingly occupied initially.`);
+                           console.warn(`Player-chosen spot for Blue at (${startRow}, ${startCol}) invalid or too close. Falling back to random.`);
+                      }
+                  }
+
+                  if (!startPosChosen) {
+                        let attemptsRandom = 0;
+                        while(!startPosChosen && attemptsRandom < maxStartPosAttempts) {
+                            attemptsRandom++;
+                            startRow = Math.floor(Math.random() * numRows);
+                            startCol = Math.floor(Math.random() * numCols);
+
+                             if (startRow < 0 || startRow >= numRows || startCol < 0 || startCol >= numCols) continue;
+
+                            let tooCloseToOthers = false;
+                            for (const chosenPos of tempChosenStartPoints) {
+                                 if (getManhattanDistance({row: startRow, col: startCol}, chosenPos) < minStartingDistance) {
+                                     tooCloseToOthers = true;
+                                     break;
+                                 }
+                            }
+
+                              let immediateAreaClear = true;
+                              for (let r = -1; r <= 1; r++) {
+                                  for (let c = -1; c <= 1; c++) {
+                                      if (r === 0 && c === 0) continue;
+                                      const neighborRow = startRow + r;
+                                      const neighborCol = startCol + c;
+                                      for (const chosenPos of tempChosenStartPoints) {
+                                          if (chosenPos.row === neighborRow && chosenPos.col === neighborCol) {
+                                               immediateAreaClear = false;
+                                               break;
+                                          }
+                                      }
+                                      if (!immediateAreaClear) break;
+                                  }
+                                  if (!immediateAreaClear) break;
+                              }
+
+
+                            if (!tooCloseToOthers && immediateAreaClear && !isOccupiedForPlacement(startRow, startCol)) {
+                                 startPosChosen = true;
+                             }
+                        }
+
+                        if (!startPosChosen) {
+                             console.warn(`Unable to find a suitable random start point for ${civType.name} after ${maxStartPosAttempts} attempts. Forcing a random spot.`);
+                             let forcedAttempts = 0;
+                             while(forcedAttempts < 1000) {
+                                  startRow = Math.floor(Math.random() * numRows);
+                                  startCol = Math.floor(Math.random() * numCols);
+                                  if (startRow >= 0 && startRow < numRows && startCol >= 0 && startCol < numCols && !isOccupiedForPlacement(startRow, startCol)) {
+                                         startPosChosen = true;
+                                         console.log(`Forcing fallback start point for ${civType.name} at (${startRow}, ${startCol})`);
+                                         break;
+                                  }
+                                  forcedAttempts++;
+                             }
+                             if(!startPosChosen) {
+                                 console.error(`Failed to find ANY spot for ${civType.name} after ${1000} forced attempts! This civ will not spawn.`);
+                                 startRow = -1; startCol = -1;
+                                 startPosChosen = true;
+                             }
+                        }
+                  }
+                    if (startRow >= 0 && startCol >= 0) {
+                        finalCivStartPoints.push({ row: startRow, col: startCol, color: civType.color, name: civType.name });
+                        tempChosenStartPoints.push({ row: startRow, col: startCol });
+                    }
+             }
+              console.log("Final determined single start points:", finalCivStartPoints);
+
+              const civStartingPositionsForWallAvoidance = finalCivStartPoints.map(p => ({ row: p.row, col: p.col }));
+              generateWalls(numInitialWalls, minWallLength, maxWallLength, civStartingPositionsForWallAvoidance, startingZoneRadius);
+
+              let totalUnitsSpawned = 0;
+              for (const finalPosData of finalCivStartPoints) {
+                  const spawnRow = finalPosData.row;
+                  const spawnCol = finalPosData.col;
+
+                  if (!isOccupiedForPlacement(spawnRow, spawnCol)) {
+                      civilizations.push({
+                          id: totalUnitsSpawned + 1,
+                          type: finalPosData.name, // Keep original name for stats grouping
+                          color: finalPosData.color, // Use the potentially swapped color
+                          row: spawnRow,
+                          col: spawnCol,
+                          speedMultiplier: initialSpeedBaseMultiplier,
+                          moveCooldown: 0,
+                          targetFoodId: null
+                      });
+                      totalUnitsSpawned++;
+                  } else {
+                      console.warn(`Initial spawn point for ${finalPosData.name} at (${spawnRow}, ${spawnCol}) was occupied after wall generation. Unit not spawned.`);
+                  }
+              }
+              console.log(`Spawned ${totalUnitsSpawned} initial civilization units.`);
+
+              generateFood(numInitialApples, 'apple');
+              generateFood(numInitialCarrots, 'carrot');
+
+              console.log("Initial state:", { civilizations, apples, carrots, walls });
+
+              drawGame();
+              updateCharacteristicsDisplay();
+          }
+
+
+         // Function to check if a cell is occupied
+         function isOccupiedForPlacement(row, col) {
+             for (const wall of walls) {
+                 if (wall.row === row && wall.col === col) {
+                     return true;
+                 }
+             }
+             for (const civ of civilizations) {
+                 if (civ.row === row && civ.col === col) {
+                     return true;
+                 }
+             }
+             for (const food of [...apples, ...carrots]) {
+                 if (food.row === row && food.col === col) {
+                     return true;
+                 }
+             }
+             return false;
+         }
+
+          // Function to generate walls (Placeholder - Needs full implementation)
+          function generateWalls(numWalls, minLength, maxLength, positionsToAvoid = [], avoidanceRadius = 0) {
+              walls = [];
+              // Add placeholder logic or keep the previous implementation
+              // ... (previous generateWalls implementation goes here) ...
+                const maxAttemptsPerSegment = 100;
+                for (let i = 0; i < numWalls; i++) {
+                    let wallLength = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
+                    let currentRow, currentCol;
+                    let direction;
+                    let segmentAttempts;
+                    let wallPlaced = false;
+
+                    let startAttempts = 0;
+                    while (!wallPlaced && startAttempts < 500) {
+                        startAttempts++;
+                        currentRow = Math.floor(Math.random() * numRows);
+                        currentCol = Math.floor(Math.random() * numCols);
+                        direction = Math.floor(Math.random() * 4);
+
+                        let tooCloseToStart = false;
+                        for (const avoidPos of positionsToAvoid) {
+                            if (getManhattanDistance({row: currentRow, col: currentCol}, avoidPos) <= avoidanceRadius) {
+                                tooCloseToStart = true;
+                                break;
+                            }
+                        }
+
+                        const isOccupied = isOccupiedForPlacement(currentRow, currentCol);
+
+                        if (!tooCloseToStart && !isOccupied) {
+                            let tempWallSegments = [{ row: currentRow, col: currentCol }]; // Build wall in a temporary list first
+                            let wallSegmentsPlaced = 1;
+                            segmentAttempts = 0;
+
+                            let tempRow = currentRow;
+                            let tempCol = currentCol;
+
+                            while (wallSegmentsPlaced < wallLength && segmentAttempts < maxAttemptsPerSegment) {
+                                segmentAttempts++;
+                                let nextRow = tempRow;
+                                let nextCol = tempCol;
+
+                                switch (direction) {
+                                    case 0: nextRow--; break;
+                                    case 1: nextCol++; break;
+                                    case 2: nextRow++; break;
+                                    case 3: nextCol--; break;
+                                }
+
+                                let validNextPosition = nextRow >= 0 && nextRow < numRows && nextCol >= 0 && nextCol < numCols && !isOccupiedForPlacement(nextRow, nextCol);
+
+                                if (validNextPosition) {
+                                    let tooCloseToStartNext = false;
+                                    for (const avoidPos of positionsToAvoid) {
+                                        if (getManhattanDistance({row: nextRow, col: nextCol}, avoidPos) <= avoidanceRadius) {
+                                            tooCloseToStartNext = true;
+                                            break;
+                                        }
+                                    }
+                                    if (tooCloseToStartNext) validNextPosition = false;
+                                }
+
+                                if (validNextPosition) {
+                                    tempWallSegments.push({ row: nextRow, col: nextCol });
+                                    tempRow = nextRow;
+                                    tempCol = nextCol;
+                                    wallSegmentsPlaced++;
+                                    segmentAttempts = 0;
+                                } else {
+                                    direction = Math.floor(Math.random() * 4); // Change direction
+                                }
+                            }
+
+                             if (tempWallSegments.length >= minLength) {
+                                  walls.push(...tempWallSegments); // Add valid segments to the main walls array
+                                  wallPlaced = true;
+                             } else {
+                                 // Wall fragment too short, discard and try again
+                                 // console.log("Wall fragment too short, discarding.");
+                             }
+                        }
+                    }
+                    if (!wallPlaced) {
+                         console.warn(`Failed to place a wall after ${500} start attempts.`);
+                    }
+                }
+                console.log(`Generated ${walls.length} wall segments.`);
+          }
+
+
+         // Function to generate food (apples and carrots) (Placeholder - Needs full implementation)
+         function generateFood(numFood, type) {
+             const foodList = type === 'apple' ? apples : carrots;
+             foodList.length = 0;
+             const color = type === 'apple' ? 'red' : 'yellow';
+             let foodId = 0;
+
+             const maxAttempts = 500;
+
+             for (let i = 0; i < numFood; i++) {
+                 let placed = false;
+                 let attempts = 0;
+                 while (!placed && attempts < maxAttempts) {
+                     attempts++;
+                     const row = Math.floor(Math.random() * numRows);
+                     const col = Math.floor(Math.random() * numCols);
+
+                     if (row >= 0 && row < numRows && col >= 0 && col < numCols && !isOccupiedForPlacement(row, col)) {
+                         foodList.push({ id: foodId++, row: row, col: col, color: color, targeted: false });
+                         placed = true;
+                     }
+                 }
+                 if (!placed) {
+                     console.warn(`Failed to place a ${type} after ${maxAttempts} attempts.`);
+                 }
+             }
+             console.log(`Generated ${foodList.length} ${type}s.`);
+         }
+
+
+          // Function to draw the grid background
+          function drawGrid() {
+              ctx.fillStyle = '#8FBC8F'; // Green background
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+
+         // Function to draw all game elements (Placeholder - Needs full implementation)
+         function drawGame() {
+            drawGrid();
+
+            ctx.fillStyle = '#555'; // Dark grey for walls
+            walls.forEach(wall => {
+                 ctx.fillRect(wall.col * cellSize, wall.row * cellSize, cellSize, cellSize);
+             });
+
+             apples.forEach(apple => {
+                 ctx.fillStyle = apple.color;
+                 ctx.fillRect(apple.col * cellSize, apple.row * cellSize, cellSize, cellSize);
+             });
+             carrots.forEach(carrot => {
+                 ctx.fillStyle = carrot.color;
+                 ctx.fillRect(carrot.col * cellSize, carrot.row * cellSize, cellSize, cellSize);
+             });
+
+            civilizations.forEach(civ => {
+                ctx.fillStyle = civ.color;
+                ctx.fillRect(civ.col * cellSize, civ.row * cellSize, cellSize, cellSize);
+                 ctx.beginPath();
+                 ctx.arc(civ.col * cellSize + cellSize / 2, civ.row * cellSize + cellSize / 2, cellSize / 4, 0, Math.PI * 2);
+                 ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; // White dot
+                 ctx.fill();
+             });
+         }
+
+         // Function to update the game state (Placeholder - Needs full movement/collision logic)
+         function updateGame(deltaTime) {
+             // console.log("Updating game state...", deltaTime);
+             // This is where you would implement:
+             // - Civ movement logic (pathfinding, targeting food)
+             // - Collision detection (civs with food, civs with walls, civs with other civs?)
+             // - Food consumption and reproduction/speed increase
+             // - Updating civ states (position, speed, target, cooldowns)
+
+             // Placeholder: Just log delta time to show it's running
+             // console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
+
+             // Update civilization cooldowns
+             civilizations.forEach(civ => {
+                  if (civ.moveCooldown > 0) {
+                      civ.moveCooldown -= deltaTime;
+                      if (civ.moveCooldown < 0) civ.moveCooldown = 0;
+                  }
+             });
+
+             // Simple placeholder movement logic: move randomly if cooldown is zero
+             civilizations.forEach(civ => {
+                 if (civ.moveCooldown <= 0) {
+                     // Basic random movement for now
+                     const possibleMoves = [
+                         {dr: -1, dc: 0}, // Up
+                         {dr: 1, dc: 0},  // Down
+                         {dr: 0, dc: -1}, // Left
+                         {dr: 0, dc: 1}   // Right
+                     ];
+                     const move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                     const newRow = civ.row + move.dr;
+                     const newCol = civ.col + move.dc;
+
+                     // Check boundaries and collisions with walls
+                     if (newRow >= 0 && newRow < numRows && newCol >= 0 && newCol < numCols) {
+                         let hitWall = walls.some(wall => wall.row === newRow && wall.col === newCol);
+                         if (!hitWall) {
+                              // Check collision with other civs BEFORE moving
+                              let hitCiv = civilizations.some(otherCiv => otherCiv !== civ && otherCiv.row === newRow && otherCiv.col === newCol);
+                              if (!hitCiv) {
+                                  civ.row = newRow;
+                                  civ.col = newCol;
+                                   // Reset cooldown based on speed
+                                  civ.moveCooldown = baseMoveInterval / civ.speedMultiplier;
+                              }
+                         }
+                     }
+                     // Note: Food interaction/targeting logic is missing
+                 }
+             });
+
+             // Basic collision detection with food (needs refinement to handle targeting)
+              apples.forEach((apple, appleIndex) => {
+                  civilizations.forEach(civ => {
+                       if (civ.row === apple.row && civ.col === apple.col) {
+                           console.log(`${civ.type} ate an apple at (${apple.row}, ${apple.col})`);
+                           // Remove the eaten apple
+                           apples.splice(appleIndex, 1);
+                           // Reproduce (spawn a new unit nearby if space is available)
+                            const spawnAttempts = 10;
+                            let spawned = false;
+                            for(let i = 0; i < spawnAttempts; i++) {
+                                const neighborOffsets = [{dr: -1, dc: 0}, {dr: 1, dc: 0}, {dr: 0, dc: -1}, {dr: 0, dc: 1}]; // Adjacent cells
+                                const offset = neighborOffsets[Math.floor(Math.random() * neighborOffsets.length)];
+                                const spawnRow = civ.row + offset.dr;
+                                const spawnCol = civ.col + offset.dc;
+
+                                if (spawnRow >= 0 && spawnRow < numRows && spawnCol >= 0 && spawnCol < numCols && !isOccupiedForPlacement(spawnRow, spawnCol)) {
+                                    civilizations.push({
+                                         id: civilizations.length + 1,
+                                         type: civ.type,
+                                         color: civ.color,
+                                         row: spawnRow,
+                                         col: spawnCol,
+                                         speedMultiplier: initialSpeedBaseMultiplier, // New unit starts with base speed
+                                         moveCooldown: 0,
+                                         targetFoodId: null
+                                     });
+                                    console.log(`New ${civ.type} unit spawned at (${spawnRow}, ${spawnCol})`);
+                                    spawned = true;
+                                    break;
+                                }
+                            }
+                            if (!spawned) {
+                                 console.log(`No space to spawn new ${civ.type} unit near (${civ.row}, ${civ.col})`);
+                            }
+                       }
+                  });
+              });
+
+             carrots.forEach((carrot, carrotIndex) => {
+                 civilizations.forEach(civ => {
+                       if (civ.row === carrot.row && civ.col === carrot.col) {
+                           console.log(`${civ.type} ate a carrot at (${carrot.row}, ${carrot.col})`);
+                           // Remove the eaten carrot
+                           carrots.splice(carrotIndex, 1);
+                           // Increase speed
+                           civ.speedMultiplier += carrotSpeedIncreaseMultiplier;
+                           console.log(`${civ.type} speed increased to ${civ.speedMultiplier.toFixed(2)}`);
+                       }
+                 });
+             });
+
+
+             updateCharacteristicsDisplay();
+         }
+
+
+         // Function to update the characteristics display
+         function updateCharacteristicsDisplay() {
+             const blueCivs = civilizations.filter(civ => civ.type === 'Blue');
+             const purpleCivs = civilizations.filter(civ => civ.type === 'Purple');
+             const blackCivs = civilizations.filter(civ => civ.type === 'Black');
+             const greenCivs = civilizations.filter(civ => civ.type === 'Green');
+
+             if (bluePopulationDisplay) bluePopulationDisplay.textContent = blueCivs.length;
+             const blueTotalSpeed = blueCivs.reduce((sum, civ) => sum + civ.speedMultiplier, 0);
+             if (blueSpeedDisplay) blueSpeedDisplay.textContent = blueCivs.length > 0 ? (blueTotalSpeed / blueCivs.length).toFixed(2) : 'N/A';
+
+             if (purplePopulationDisplay) purplePopulationDisplay.textContent = purpleCivs.length;
+             const purpleTotalSpeed = purpleCivs.reduce((sum, civ) => sum + civ.speedMultiplier, 0);
+             if (purpleSpeedDisplay) purpleSpeedDisplay.textContent = purpleCivs.length > 0 ? (purpleTotalSpeed / purpleCivs.length).toFixed(2) : 'N/A';
+
+             if (blackPopulationDisplay) blackPopulationDisplay.textContent = blackCivs.length;
+             const blackTotalSpeed = blackCivs.reduce((sum, civ) => sum + civ.speedMultiplier, 0);
+             if (blackSpeedDisplay) blackSpeedDisplay.textContent = blackCivs.length > 0 ? (blackTotalSpeed / blackCivs.length).toFixed(2) : 'N/A';
+
+             if (greenPopulationDisplay) greenPopulationDisplay.textContent = greenCivs.length;
+             const greenTotalSpeed = greenCivs.reduce((sum, civ) => sum + civ.speedMultiplier, 0);
+             if (greenSpeedDisplay) greenSpeedDisplay.textContent = greenCivs.length > 0 ? (greenTotalSpeed / greenCivs.length).toFixed(2) : 'N/A';
+         }
+
+         // Function to display a message in the message box
+         function displayMessage(message) {
+             if (messageBox) messageBox.textContent = message;
+         }
+
+
+         // The main game loop
+         function gameLoop(currentTime) {
+             if (!isRunning) {
+                 return; // Stop the loop if game is paused or not running
+             }
+
+             const deltaTime = currentTime - lastFrameTime; // Time passed since last frame
+             lastFrameTime = currentTime;
+
+             // Only update game state if enough time has passed for a potential move
+             // This simplifies the logic but means updates aren't perfectly smooth
+             // A better approach handles individual civ cooldowns within updateGame based on deltaTime
+             // For now, let's rely on per-civ cooldowns updated by deltaTime
+             updateGame(deltaTime);
+             drawGame();
+
+             animationFrameId = requestAnimationFrame(gameLoop); // Request the next frame
+         }
+
+
+        // --- Menu Variables and Elements (from Snippet 2) ---
+
+        const menuContainer = document.getElementById('menu-container'); // Container for menu elements
+        const gameContainer = document.getElementById('game-container'); // Container for game elements
+
+
+        const showMenuInstructionsButton = document.getElementById('show-menu-instructions-button'); // Menu instructions button
+        const menuInstructionsModalOverlay = document.getElementById('instructions-modal-overlay'); // Menu instructions modal overlay
+        const menuCloseInstructionsModalButton = document.getElementById('close-instructions-modal'); // Menu close button
+
+        const largeSquare = document.getElementById('large-square');
+        const smallColorSquares = document.querySelectorAll('.small-color-square');
+        const civNumberSpan = document.getElementById('civ-number');
+        const arrowUpButton = document.getElementById('arrow-up');
+        const arrowDownButton = document.getElementById('arrow-down');
+        const startGameButton = document.getElementById('start-game-button'); // Start game button on the menu
+
+        // Variable to store the chosen civilization color (from menu)
+        let chosenCivColor = '#0000FF'; // Default to blue if none chosen
+
+        // Function to hide the menu and show the game
+        function showGameElements() {
+             if (menuContainer) menuContainer.style.display = 'none';
+             if (gameContainer) gameContainer.style.display = 'flex';
+             resizeCanvas(); // Ensure canvas is sized correctly when shown
+        }
+
+        // Function to hide the game and show the menu
+        function showMenuElements() {
+             if (gameContainer) gameContainer.style.display = 'none';
+             if (menuContainer) menuContainer.style.display = 'flex';
+             // No need to resize menu, its layout is handled by CSS
+        }
+
+
+        // --- Menu Event Listeners ---
+
+        // Show menu instructions modal
+        if(showMenuInstructionsButton) {
+            showMenuInstructionsButton.addEventListener('click', showMenuModal);
+        }
+
+
+        // Show the menu instructions modal
+        function showMenuModal() {
+            if (menuInstructionsModalOverlay) {
+                menuInstructionsModalOverlay.classList.remove('hidden');
+            }
+        }
+
+        // Hide the menu instructions modal
+        function hideMenuModal() {
+             if (menuInstructionsModalOverlay) {
+                menuInstructionsModalOverlay.classList.add('hidden');
+             }
+        }
+
+        // Close menu instructions modal button
+        if(menuCloseInstructionsModalButton) {
+            menuCloseInstructionsModalButton.addEventListener('click', hideMenuModal);
+        }
+
+        // Close menu instructions modal by clicking outside
+        if(menuInstructionsModalOverlay) {
+             menuInstructionsModalOverlay.addEventListener('click', function(event) {
+                 if (event.target === menuInstructionsModalOverlay) {
+                     hideMenuModal();
+                 }
+             });
+        }
+
+
+        // Add event listeners to each small color square for color swapping (Menu)
+        smallColorSquares.forEach(square => {
+             square.addEventListener('click', function() {
+                 const smallSquareColor = this.style.backgroundColor;
+                 const largeSquareColor = largeSquare.style.backgroundColor;
+
+                 this.style.backgroundColor = largeSquareColor;
+                 largeSquare.style.backgroundColor = smallSquareColor;
+
+                 chosenCivColor = largeSquare.style.backgroundColor;
+                 console.log("Chosen Civ Color:", chosenCivColor);
+             });
+        });
+
+        // Function to update the civ number (Menu)
+        function updateCivNumber(delta) {
+             let currentNumber = parseInt(civNumberSpan.textContent);
+             currentNumber += delta;
+             currentNumber = Math.max(2, currentNumber);
+             currentNumber = Math.min(allCivTypes.length, currentNumber); // Limit by the total number of civ types available
+             civNumberSpan.textContent = currentNumber;
+        }
+
+        // Add click event listeners to the arrow buttons (Menu)
+        if(arrowUpButton) arrowUpButton.addEventListener('click', () => updateCivNumber(1));
+        if(arrowDownButton) arrowDownButton.addEventListener('click', () => updateCivNumber(-1));
+
+        // Add wheel event listener to the number span (Menu)
+        if(civNumberSpan) {
+            civNumberSpan.addEventListener('wheel', function(event) {
+                 event.preventDefault();
+                 updateCivNumber(event.deltaY < 0 ? 1 : -1);
+            });
+        }
+
+
+        // Event listener for the "Start New Game" button (on menu)
+        if(startGameButton) {
+            startGameButton.addEventListener('click', function(event) {
+                event.preventDefault();
+
+                const numberOfCivilizations = parseInt(civNumberSpan.textContent);
+                console.log("Starting game with", numberOfCivilizations, "civilizations.");
+
+                // --- Game Initialization ---
+                // Prepare the game area (resizes canvas, clears state)
+                prepareGameArea();
+                // Initialize the game state with selected parameters
+                initGame(numberOfCivilizations, chosenCivColor);
+
+
+                // --- Display Game Elements ---
+                showGameElements();
+
+                // --- Start the Game Loop ---
+                isRunning = true;
+                displayMessage('Simulation démarrée.');
+                lastFrameTime = performance.now(); // Initialize last frame time
+                animationFrameId = requestAnimationFrame(gameLoop); // Start the animation frame loop
+            });
+        }
+
+
+        // --- Game Event Listeners (from Snippet 1) ---
+
+        // Event listener for player clicking on the canvas to choose Blue's spawn point
+         if(canvas) {
+             canvas.addEventListener('click', function(event) {
+                 // Only allow placing if game is not running and player hasn't placed yet
+                 if (!isRunning && !hasPlayerPlacedBlue) {
+                     const rect = canvas.getBoundingClientRect();
+                     const mouseX = event.clientX - rect.left;
+                     const mouseY = event.clientY - rect.top;
+
+                     const clickedCol = Math.floor(mouseX / cellSize);
+                     const clickedRow = Math.floor(mouseY / cellSize);
+
+                     if (clickedRow >= 0 && clickedRow < numRows && clickedCol >= 0 && clickedCol < numCols) {
+                          // Check if the clicked spot is occupied after prepareArea but before initGame
+                          // In this setup, prepareArea clears everything, so this check should pass unless something was added between prepareArea and the click.
+                          // It's more relevant if placing AFTER initGame, but the flow is click -> Start -> initGame.
+                          // However, the initGame checks for occupied spots *after* walls/food are generated.
+                          // Let's keep this check here for robustness.
+                         if (!isOccupiedForPlacement(clickedRow, clickedCol)) {
+                             playerSpawnRow = clickedRow;
+                             playerSpawnCol = clickedCol;
+                             hasPlayerPlacedBlue = true;
+                             displayMessage(`Emplacement choisi pour la civilisation bleue: (${playerSpawnRow}, ${playerSpawnCol}). Cliquez sur "Démarrer".`);
+                              // Draw a visual indicator
+                              drawGrid(); // Redraw grid
+                              ctx.fillStyle = 'rgba(0, 0, 255, 0.5)'; // Semi-transparent blue
+                              ctx.fillRect(playerSpawnCol * cellSize, playerSpawnRow * cellSize, cellSize, cellSize);
+                         } else {
+                              displayMessage("Cet emplacement est déjà occupé. Choisissez un autre endroit.");
+                         }
+                     } else {
+                         displayMessage("Cliquez sur la grille pour choisir un emplacement.");
+                     }
+                 } else if (isRunning) {
+                      displayMessage("Le jeu est déjà en cours.");
+                 } else if (hasPlayerPlacedBlue) {
+                     displayMessage("Vous avez déjà choisi un emplacement pour la civilisation bleue.");
+                 }
+             });
+         }
+
+
+         // Event listener for the Start button (on game interface)
+         if(startButton) {
+             startButton.addEventListener('click', function() {
+                 if (!isRunning) {
+                     isRunning = true;
+                     displayMessage('Simulation reprise.');
+                     lastFrameTime = performance.now(); // Reset last frame time on resume
+                     animationFrameId = requestAnimationFrame(gameLoop); // Resume the loop
+                 }
+             });
+         }
+
+
+         // Event listener for the Pause button (on game interface)
+         if(pauseButton) {
+             pauseButton.addEventListener('click', function() {
+                 if (isRunning) {
+                     isRunning = false;
+                     displayMessage('Simulation en pause.');
+                     cancelAnimationFrame(animationFrameId); // Stop the animation frame loop
+                 }
+             });
+         }
+
+
+         // Event listener for the Reset button (on game interface)
+         if(resetButton) {
+             resetButton.addEventListener('click', function() {
+                 isRunning = false;
+                 cancelAnimationFrame(animationFrameId); // Stop any ongoing animation frame
+                 prepareGameArea(); // Reset the game state and draw empty grid
+                 displayMessage('Simulation réinitialisée.');
+                 // Go back to the menu screen
+                 showMenuElements();
+             });
+         }
+
+
+        // Event listener for the Game Instructions button
+         if(instructionsButton) {
+             instructionsButton.addEventListener('click', function() {
+                 if (gameInstructionsModal) {
+                      gameInstructionsModal.style.display = 'block';
+                 }
+             });
+         }
+
+
+        // Event listener for the Game Instructions modal close button
+         if(gameCloseButton) {
+             gameCloseButton.addEventListener('click', function() {
+                 if (gameInstructionsModal) {
+                      gameInstructionsModal.style.display = 'none';
+                 }
+             });
+         }
+
+        // Event listener to close the Game Instructions modal if the user clicks outside the modal content
+        if(gameInstructionsModal) {
+             gameInstructionsModal.addEventListener('click', function(event) {
+                 if (event.target === gameInstructionsModal) {
+                      gameInstructionsModal.style.display = 'none';
+                 }
+             });
+        }
+
+        // Initial setup: Resize canvas and show the menu
+        window.addEventListener('resize', resizeCanvas); // Add resize listener for responsiveness
+        // Call resizeCanvas once initially to set up dimensions
+        resizeCanvas(); // This will draw an empty grid initially if canvas is visible (it's hidden by default now)
+
+        // Show the menu on initial load
+        showMenuElements();
+        displayMessage('Bienvenue au jeu de civilisation !'); // Initial message
+
+
+    </script>
+
+</body>
+</html>

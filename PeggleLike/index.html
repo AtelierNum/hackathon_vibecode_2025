@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peggle Layout - p5.js (Full Screen)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+    <style>
+      /* CSS styles to make the canvas full screen and remove scrollbars */
+      body, html {
+        margin: 0; /* Remove default margins */
+        padding: 0; /* Remove default padding */
+        height: 100%; /* Make body and html take full viewport height */
+        overflow: hidden; /* Prevent scrollbars if content exceeds viewport */
+        display: flex; /* Use flexbox to center the canvas */
+        justify-content: center; /* Center horizontally */
+        align-items: center; /* Center vertically */
+      }
+      /* Style for the canvas element */
+      canvas {
+        display: block; /* Prevents extra space below the canvas */
+        /* Width and height will be set by p5.js */
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      // --- p5.js Sketch ---
+
+      const TOP_BAR_HEIGHT_RATIO = 0.1;
+      const BOTTOM_BAR_HEIGHT_RATIO = 0.08;
+
+      const LAUNCHER_LENGTH_GAME_RATIO = 0.15;
+      const LAUNCHER_WIDTH_GAME_RATIO = 0.03;
+
+      const LAUNCHER_COLOR = '#8B4513';
+      const LAUNCHER_BASE_COLOR = '#778899';
+      const LAUNCHER_TIP_LENGTH_RATIO = 0.3;
+      const LAUNCHER_TIP_COLOR = '#FFD700';
+      const LAUNCHER_DETAIL_COLOR = '#A0522D';
+
+      const BALL_RADIUS_GAME_RATIO = 0.025;
+      const BALL_COLOR = '#000000';
+
+      const PEG_RADIUS_GAME_RATIO = 0.02;
+      const ORANGE_PEG_COLOR = '#FFA500';
+      const BLUE_PEG_COLOR = '#0000FF';
+      const GREEN_PEG_COLOR = '#00FF00'; // Bright green
+      const HIT_PEG_COLOR = '#D3D3D3'; // Color when hit (can still be used for a brief flash)
+      const MIN_PEG_DISTANCE_GAME_RATIO = 0.05;
+
+      // --- Peg Flickering Variables ---
+      const PEG_FADE_DURATION = 500; // Milliseconds the peg flickers before disappearing
+      const PEG_FLICKER_INTERVAL = 50; // Milliseconds for each flicker state (on/off)
+
+      // --- Bucket Variables ---
+      let bucketWidthGameRatio = 0.12; // Increased bucket width relative to game area width
+      let bucketHeightGameRatio = 1.0; // Bucket height relative to bottom bar height (fills the bar)
+      let bucketX; // Bucket's X position (top-left corner of the outer shape)
+      let bucketY; // Bucket's Y position (top-left corner of the outer shape)
+      let bucketWidth; // Bucket's pixel width (outer)
+      let bucketHeight; // Bucket's pixel height (outer)
+      let bucketSpeed = 3; // Bucket's horizontal movement speed
+      let bucketDirection = 1; // 1 for right, -1 for left
+      const BUCKET_COLOR = '#4682B4'; // Steel blue color for the bucket
+      let wallThickness; // Thickness of the bucket walls in pixels
+
+      // --- Global Variables ---
+      let canvasWidth;
+      let canvasHeight;
+      let gameAreaWidth;
+      let gameAreaHeight;
+      let gameAreaOffsetX;
+      let gameAreaOffsetY;
+      let topBarHeight;
+      let bottomBarHeight;
+      let availablePlayAreaHeight;
+      let nextBallPower = null;
+      let currentBallPower = null;
+      let extraBalls = []; // for Splinter Strike
+
+
+      // --- Launcher Variables ---
+      let launcherAngle = 0; //
+      let launcherLength; //
+      let launcherWidth;
+      let launcherSpeed = 0.05; // Not used? Can remove later if not needed.
+      let launcherBaseX, launcherBaseY;
+      let minRotationAngle, maxRotationAngle;
+
+      // --- Game Variables ---
+      let ballsLeft = 10;
+      let ballLaunched = false;
+      let ballX, ballY;
+      let prevBallX, prevBallY; // Store previous ball position for collision detection
+      let ballSpeedX, ballSpeedY;
+      let ballRadius;
+      let gravity = 0.35;
+      let bounceDamping = 0.7;
+      let pegs = [];
+      let pegRadius;
+      let minPegDistance;
+      let orangePegsRemaining;
+      let gameState = 'playing'; // Current state of the game ('playing', 'win', 'gameover')
+      let currentLevel = 0; // Index of the current level
+      let newBackgroundImage;
+
+      let pegImages = {};
+      let ballImage;
+
+      function preload() {
+        pegImages.orange = loadImage('Peggle Orange Peg.png');
+        pegImages.blue = loadImage('Peggle Blue Peg.png');
+        pegImages.green = loadImage('Peggle Green Peg.png');
+        ballImage = loadImage('Ball.png');
+        cauldronImage = loadImage('Cauldron.png');
+        bottomBarBackground = loadImage('Bottom Bar.png');
+        newBackgroundImage = loadImage('ChatGPT Image Apr 25, 2025 at 02_13_34 PM.png');
+      }
+
+      // --- Power Up Variables ---
+      const powerUps = ["Perfect Aim", "Ghost Shot", "Mega Ball", "Splinter Strike", "Shockwave"]; // List of possible powers
+      let activePowerText = null; // Stores the text to display for the current power
+      let powerTextStartTime = 0; // Stores the time (millis()) when the power text started
+      const powerTextDuration = 5000; // Duration to display the power text in milliseconds (5 seconds)
+
+
+      // --- Level Configurations ---
+      // Define different levels with peg generation parameters
+      const levels = [
+        { numPegs: 50, orangeRatio: 0.25, greenRatio: 0.04, pegAreaTopOffsetRatio: 0.25 },
+        { numPegs: 70, orangeRatio: 0.20, greenRatio: 0.03, pegAreaTopOffsetRatio: 0.25 },
+        { numPegs: 90, orangeRatio: 0.15, greenRatio: 0.02, pegAreaTopOffsetRatio: 0.25 }
+      ];
+
+
+      // --- Initial Play Area Aspect Ratio ---
+      let initialPlayAreaAspectRatio;
+
+
+      // --- Peg Class ---
+      class Peg {
+        // Store x and y as ratios (0 to 1) relative to the play area dimensions
+        constructor(xRatio, yRatio, type) {
+          this.xRatio = xRatio;
+          this.yRatio = yRatio;
+          this.type = type; // 'orange', 'blue', or 'green'
+          this.isHit = false;
+          this.hitTime = 0; // Time when the peg was hit
+          this.isFading = false; // Flag to indicate if the peg is currently fading/flickering
+          this.color = (type === 'orange') ? ORANGE_PEG_COLOR :
+             (type === 'green') ? GREEN_PEG_COLOR :
+             BLUE_PEG_COLOR;
+        }
+
+        // Method to display the peg
+        display() {
+          // Calculate actual pixel position based on current game area dimensions and offset
+          let pixelX = gameAreaOffsetX + this.xRatio * gameAreaWidth;
+          let pixelY = gameAreaOffsetY + this.yRatio * gameAreaHeight;
+
+          if (!this.isHit) {
+  push();
+  imageMode(CENTER);
+  image(pegImages[this.type], pixelX, pixelY, pegRadius * 2, pegRadius * 2);
+  pop();
+}
+ else if (this.isFading) {
+            // If hit and fading, check if still within the fade duration
+            let timeSinceHit = millis() - this.hitTime;
+            if (timeSinceHit < PEG_FADE_DURATION) {
+              // Flicker effect: toggle visibility based on time
+              if (floor(timeSinceHit / PEG_FLICKER_INTERVAL) % 2 === 0) {
+                 push();
+                 fill(HIT_PEG_COLOR); // Use a hit color for the flicker
+                 noStroke();
+                 ellipse(pixelX, pixelY, pegRadius * 2, pegRadius * 2);
+                 pop();
+              }
+            } else {
+              // Fade duration is over, stop fading and the peg will no longer be drawn
+              this.isFading = false;
+            }
+          }
+          // If isHit is true and isFading is false, the peg is not drawn
+        }
+
+        // Method to check for collision with a ball
+        checkCollision(ballX, ballY, ballRadius) {
+          // Keep collision detection active even if already hit, as long as it's still fading
+          if (this.isHit && !this.isFading) return false; // Only stop collision if hit AND finished fading
+
+          // Calculate actual pixel position of the peg
+          let pixelX = gameAreaOffsetX + this.xRatio * gameAreaWidth;
+          let pixelY = gameAreaOffsetY + this.yRatio * gameAreaHeight;
+
+          // Calculate distance between ball and peg centers
+          let d = dist(ballX, ballY, pixelX, pixelY);
+          if (d < ballRadius + pegRadius) { // Collision detected if distance is less than sum of radii
+            // Only mark as hit and start fading the *first* time it's hit
+            if (!this.isHit) {
+                this.isHit = true;
+                this.hitTime = millis(); // Record the time of impact
+                this.isFading = true; // Start the fading process
+
+                // --- Check for Green Peg and Activate Power Up ---
+
+                if (this.type === 'green') {
+                    let awardedPower = random(powerUps); // Select a random power from the list
+                    activePowerText = "Next ball will have " + awardedPower + "!"; // Set the text to display
+                    powerTextStartTime = millis(); // Record the start time for the text
+                    console.log("Activated Power: " + awardedPower); // Log to console for now
+                    nextBallPower = awardedPower;
+                    // *** Future Power Up Activation Logic Goes Here ***
+                    // e.g., activateBallPower(awardedPower);
+                } else if (this.type === 'orange') {
+                  orangePegsRemaining--;
+                }
+            }
+            return true; // Return true even if already hit, to allow bouncing
+          }
+          return false;
+        }
+      }
+
+// ---- ADD destroyNearbyPegs ----
+function destroyNearbyPegs(originPeg) {
+  let radius = pegRadius * 10;
+  let originX = gameAreaOffsetX + originPeg.xRatio * gameAreaWidth;
+  let originY = gameAreaOffsetY + originPeg.yRatio * gameAreaHeight;
+  for (let p of pegs) {
+    if (!p.isHit) {
+      let px = gameAreaOffsetX + p.xRatio * gameAreaWidth;
+      let py = gameAreaOffsetY + p.yRatio * gameAreaHeight;
+      if (dist(originX, originY, px, py) < radius) {
+        p.isHit = true;
+        p.hitTime = millis();
+        p.isFading = true;
+        if (p.type === 'orange') orangePegsRemaining--;
+      }
+    }
+  }
+}
+
+// ---- ADD spawnExtraBall and update/draw extraBalls ----
+function spawnExtraBall(x, y, vx, vy) {
+  extraBalls.push({ x, y, vx, vy });
+}
+
+function updateExtraBalls() {
+  for (let i = extraBalls.length - 1; i >= 0; i--) {
+    let b = extraBalls[i];
+
+    // Apply gravity
+    b.vy += gravity;
+
+    // Predict next position
+    let nextX = b.x + b.vx;
+    let nextY = b.y + b.vy;
+
+    // Bounce off walls
+    if (nextX > gameAreaOffsetX + gameAreaWidth - ballRadius) {
+      nextX = gameAreaOffsetX + gameAreaWidth - ballRadius;
+      b.vx *= -bounceDamping;
+    } else if (nextX < gameAreaOffsetX + ballRadius) {
+      nextX = gameAreaOffsetX + ballRadius;
+      b.vx *= -bounceDamping;
+    }
+
+    if (nextY < gameAreaOffsetY + ballRadius) {
+      nextY = gameAreaOffsetY + ballRadius;
+      b.vy *= -bounceDamping;
+    }
+
+    // Peg collisions
+    for (let peg of pegs) {
+      if (peg.checkCollision(nextX, nextY, ballRadius)) {
+        let pegX = gameAreaOffsetX + peg.xRatio * gameAreaWidth;
+        let pegY = gameAreaOffsetY + peg.yRatio * gameAreaHeight;
+        let dx = nextX - pegX;
+        let dy = nextY - pegY;
+        let d = sqrt(dx * dx + dy * dy);
+        let overlap = ballRadius + pegRadius - d;
+        let nx = dx / d;
+        let ny = dy / d;
+        nextX += nx * overlap;
+        nextY += ny * overlap;
+        let dot = b.vx * nx + b.vy * ny;
+        b.vx = (b.vx - 2 * dot * nx) * bounceDamping;
+        b.vy = (b.vy - 2 * dot * ny) * bounceDamping;
+      }
+    }
+
+    b.x = nextX;
+    b.y = nextY;
+
+    // Remove if out of screen
+    if (b.y > height + ballRadius) {
+      extraBalls.splice(i, 1);
+    } else {
+      // Draw the ball
+      push();
+      imageMode(CENTER);
+      image(ballImage, b.x, b.y, ballRadius * 2, ballRadius * 2);
+      pop();
+    }
+  }
+}
+
+
+      // --- p5.js Setup Function ---
+      // This function runs once when the script starts
+      function setup() {
+        // Get the width and height of the browser window
+        canvasWidth = windowWidth;
+        canvasHeight = windowHeight;
+        // Create a p5.js canvas element with the window dimensions
+        createCanvas(canvasWidth, canvasHeight);
+
+        // Calculate initial dimensions based on window size
+        topBarHeight = canvasHeight * TOP_BAR_HEIGHT_RATIO;
+        bottomBarHeight = canvasHeight * BOTTOM_BAR_HEIGHT_RATIO;
+        availablePlayAreaHeight = canvasHeight - topBarHeight - bottomBarHeight;
+
+        // Calculate initial game area width and height based on a chosen aspect ratio
+        // Let's choose an initial aspect ratio based on a typical Peggle board (e.g., 16:9 or similar)
+        // For now, let's calculate it based on the current window proportions within the available height
+        let initialGameAreaWidth = canvasWidth * 0.8; // Start with 80% of width as before
+        let initialGameAreaHeight = availablePlayAreaHeight;
+        initialPlayAreaAspectRatio = initialGameAreaWidth / initialGameAreaHeight;
+
+
+        // Calculate current game area dimensions and offset based on initial aspect ratio
+        calculateGameAreaDimensions();
+
+        // --- Initialize Peg and Ball Dimensions based on game area ---
+        pegRadius = gameAreaHeight * PEG_RADIUS_GAME_RATIO; // Peg radius relative to game area height
+        minPegDistance = gameAreaHeight * MIN_PEG_DISTANCE_GAME_RATIO; // Min peg distance relative to game area height
+        ballRadius = gameAreaHeight * BALL_RADIUS_GAME_RATIO; // Ball radius relative to game area height
+
+
+        // --- Initialize Launcher Position and Dimensions based on game area ---
+        launcherLength = gameAreaHeight * LAUNCHER_LENGTH_GAME_RATIO; // Launcher length based on game area height
+        launcherWidth = gameAreaWidth * LAUNCHER_WIDTH_GAME_RATIO; // Launcher width based on game area width
+        launcherBaseX = gameAreaOffsetX + gameAreaWidth / 2; // Center the launcher horizontally within the game area
+        launcherBaseY = topBarHeight; // Position the launcher base at the bottom of the top bar
+
+
+        // --- Calculate Rotation Limits for the Launcher ---
+        launcherAngle = PI / 2; // Start pointing straight down
+        let rotationRange = HALF_PI * 0.95; // Allow about 85.5 degrees of rotation to each side
+        minRotationAngle = launcherAngle - rotationRange;
+        maxRotationAngle = launcherAngle + rotationRange;
+
+        // --- Initialize Bucket Position and Dimensions ---
+        bucketWidth = gameAreaWidth * bucketWidthGameRatio;
+        bucketHeight = bottomBarHeight * bucketHeightGameRatio;
+        // Start the bucket centered horizontally within the game area bounds in the bottom bar
+        bucketX = gameAreaOffsetX + (gameAreaWidth - bucketWidth) / 2;
+        // Position the bucket vertically centered within the bottom bar
+        bucketY = gameAreaOffsetY + gameAreaHeight + (bottomBarHeight - bucketHeight) / 2;
+
+        // Calculate wall thickness based on game area width
+        wallThickness = gameAreaWidth * 0.015; // 1.5% of game area width
+
+        // Initialize previous ball position
+        prevBallX = ballX;
+        prevBallY = ballY;
+
+
+        // --- Generate Pegs for the initial level ---
+        generateLevel(currentLevel);
+
+        // --- Set Text Properties ---
+        textAlign(CENTER, CENTER); // Set the default text alignment to the center horizontally and vertically
+        textSize(Math.min(width, height) * 0.02); // Set the text size relative to the smaller dimension of the window
+      }
+
+      // --- Function to Calculate Game Area Dimensions and Offset ---
+      function calculateGameAreaDimensions() {
+          topBarHeight = canvasHeight * TOP_BAR_HEIGHT_RATIO;
+          bottomBarHeight = canvasHeight * BOTTOM_BAR_HEIGHT_RATIO;
+          availablePlayAreaHeight = canvasHeight - topBarHeight - bottomBarHeight;
+
+          let availablePlayAreaWidth = canvasWidth; // Available width is the full canvas width for now
+
+          // Determine the actual game area dimensions while maintaining the aspect ratio
+          let calculatedWidth = availablePlayAreaHeight * initialPlayAreaAspectRatio;
+          let calculatedHeight = availablePlayAreaWidth / initialPlayAreaAspectRatio;
+
+          if (calculatedWidth <= availablePlayAreaWidth) {
+              // Height is the limiting factor, use calculated width
+              gameAreaWidth = calculatedWidth;
+              gameAreaHeight = availablePlayAreaHeight;
+          } else {
+              // Width is the limiting factor, use calculated height
+              gameAreaWidth = availablePlayAreaWidth;
+              gameAreaHeight = calculatedHeight;
+          }
+
+          // Calculate offsets to center the game area
+          gameAreaOffsetX = (canvasWidth - gameAreaWidth) / 2;
+          gameAreaOffsetY = topBarHeight + (availablePlayAreaHeight - gameAreaHeight) / 2;
+
+           // Recalculate bucket dimensions and position based on new game area and bottom bar size
+          bucketWidth = gameAreaWidth * bucketWidthGameRatio;
+          bucketHeight = bottomBarHeight * bucketHeightGameRatio;
+          bucketX = gameAreaOffsetX + (gameAreaWidth - bucketWidth) / 2; // Recenter horizontally
+          bucketY = gameAreaOffsetY + gameAreaHeight + (bottomBarHeight - bucketHeight) / 2; // Recenter vertically in bottom bar
+
+          // Recalculate wall thickness
+          wallThickness = gameAreaWidth * 0.015;
+      }
+
+
+      // --- Function to Generate Pegs for a Specific Level ---
+      function generateLevel(levelIndex) {
+          if (levelIndex >= levels.length) {
+              // Game finished all levels
+              gameState = 'win';
+              return;
+          }
+          
+          calculateGameAreaDimensions();
+            pegRadius = gameAreaHeight * PEG_RADIUS_GAME_RATIO;
+            minPegDistance = gameAreaHeight * MIN_PEG_DISTANCE_GAME_RATIO;
+            ballRadius = gameAreaHeight * BALL_RADIUS_GAME_RATIO;
+            launcherLength = gameAreaHeight * LAUNCHER_LENGTH_GAME_RATIO;
+            launcherWidth = gameAreaWidth * LAUNCHER_WIDTH_GAME_RATIO;
+            launcherBaseX = gameAreaOffsetX + gameAreaWidth / 2;
+            launcherBaseY = topBarHeight;
+
+          pegs = []; // Clear the existing pegs array
+          ballsLeft = 10; // Reset balls for the new level
+          ballLaunched = false; // Reset ball state
+          orangePegsRemaining = 0; // Reset orange peg count
+          activePowerText = null; // Clear any lingering power text
+          powerTextStartTime = 0;
+
+          let levelConfig = levels[levelIndex];
+          availablePlayAreaHeight = canvasHeight - topBarHeight - bottomBarHeight;
+
+
+          // Define the area within the play area where pegs can be placed (using ratios)
+          // This area is relative to the gameAreaWidth and gameAreaHeight
+          let pegAreaRelativeX = 0;
+          // Start peg placement further down from the top of the play area based on level config ratio
+          let pegAreaRelativeY = levelConfig.pegAreaTopOffsetRatio;
+          let pegAreaRelativeWidth = 1.0; // Full width of the game area
+          let pegAreaRelativeHeight = 1.0 - levelConfig.pegAreaTopOffsetRatio; // Remaining height
+
+          // Use the number of pegs defined in the level config
+          let numPegs = levelConfig.numPegs;
+          let numGreenPegsToPlace = floor(numPegs * levelConfig.greenRatio); // Calculate how many green pegs based on ratio
+          let numOrangePegsToPlace = floor(numPegs * levelConfig.orangeRatio);
+          let numBluePegsToPlace = numPegs - numGreenPegsToPlace - numOrangePegsToPlace; // Rest are blue
+
+           // Ensure we place at least one green peg if the ratio implies it, or if it's a core game mechanic
+           // For this implementation, let's ensure at least 2 green pegs if the level allows.
+           if (numGreenPegsToPlace < 2 && numPegs >= 2) {
+               let diff = 2 - numGreenPegsToPlace;
+               numGreenPegsToPlace = 2;
+               // Reduce blue pegs if needed to make space
+               numBluePegsToPlace -= diff;
+               if (numBluePegsToPlace < 0) numBluePegsToPlace = 0;
+               // Adjust orange pegs if still needed, though less desirable
+               let remainingDiff = 2 - numGreenPegsToPlace;
+               if (remainingDiff > 0) {
+                   numOrangePegsToPlace -= remainingDiff;
+                    if (numOrangePegsToPlace < 0) numOrangePegsToPlace = 0;
+               }
+           }
+
+
+          // Calculate min peg distance in terms of ratios for placement
+          // Approximate the minimum distance in ratios based on the initial game area size
+          // Use the current gameArea dimensions for more accurate ratio calculation during generation
+          let minPegDistanceRatioX = minPegDistance / gameAreaWidth; // Not strictly used in placement logic, but good for context
+          let minPegDistanceRatioY = minPegDistance / gameAreaHeight; // Not strictly used
+
+
+          for (let i = 0; i < numPegs; i++) {
+            let placed = false;
+            let attempts = 0;
+            while (!placed && attempts < 100) { // Try placing the peg up to 100 times
+              // Generate random position as ratios within the relative peg area
+              let sideMarginRatio = 0.05; // 5% margin on each side (adjust as needed)
+
+                let xRatio = random(
+                pegAreaRelativeX + sideMarginRatio + (pegRadius / gameAreaWidth), // Ensure peg is fully within bounds
+                pegAreaRelativeX + pegAreaRelativeWidth - sideMarginRatio - (pegRadius / gameAreaWidth) // Ensure peg is fully within bounds
+                );
+
+              let yRatio = random(pegAreaRelativeY + (pegRadius / gameAreaHeight), pegAreaRelativeY + pegAreaRelativeHeight - (pegRadius / gameAreaHeight));
+
+
+              // Avoid placing pegs too close to the launcher base area (check distance using pixel coordinates)
+              let potentialPixelX = gameAreaOffsetX + xRatio * gameAreaWidth;
+              let potentialPixelY = gameAreaOffsetY + yRatio * gameAreaHeight;
+              let distToLauncherBase = dist(potentialPixelX, potentialPixelY, launcherBaseX, launcherBaseY);
+              // Avoid placing too close to the top bar area as well
+              let distToTopBar = potentialPixelY - topBarHeight;
+              if (distToLauncherBase < launcherWidth * 2 || distToTopBar < pegRadius * 2) { // If too close to launcher base or top bar, try again
+                  attempts++;
+                  continue;
+              }
+
+
+              let overlapping = false;
+              for (let j = 0; j < pegs.length; j++) {
+                let otherPeg = pegs[j];
+                 // Check overlap with other pegs using their stored ratios and current game area dimensions
+                let otherPixelX = gameAreaOffsetX + otherPeg.xRatio * gameAreaWidth;
+                let otherPixelY = gameAreaOffsetY + otherPeg.yRatio * gameAreaHeight;
+                let d = dist(potentialPixelX, potentialPixelY, otherPixelX, otherPixelY);
+                if (d < minPegDistance) { // Check if the new peg overlaps with existing pegs (using pixel distance)
+                  overlapping = true;
+                  break;
+                }
+              }
+
+              if (!overlapping) {
+                // Determine peg type based on counts
+                let pegType;
+                if (numGreenPegsToPlace > 0) {
+                    pegType = 'green';
+                    numGreenPegsToPlace--;
+                } else if (numOrangePegsToPlace > 0) {
+                    pegType = 'orange';
+                    numOrangePegsToPlace--;
+                } else {
+                    pegType = 'blue';
+                    numBluePegsToPlace--;
+                }
+
+                // Store peg position as ratios
+                pegs.push(new Peg(xRatio, yRatio, pegType));
+                if (pegType === 'orange') {
+                    orangePegsRemaining++;
+                }
+                placed = true;
+              }
+              attempts++;
+            }
+          }
+           gameState = 'playing'; // Set game state to playing for the new level
+      }
+
+
+      // --- p5.js Draw Function ---
+      // This function runs continuously in a loop (typically 60 times per second)
+
+      function drawPegAreaEdges() {
+  push();
+  stroke(255, 255, 255, 50); // White lines, very transparent
+  strokeWeight(2);
+  noFill();
+
+  let margin = 10; // Optional inward margin
+
+  // Left line - from very top of play area to very bottom
+  line(
+    gameAreaOffsetX + margin,
+    gameAreaOffsetY + margin,
+    gameAreaOffsetX + margin,
+    gameAreaOffsetY + gameAreaHeight - margin
+  );
+
+  // Right line - from very top of play area to very bottom
+  line(
+    gameAreaOffsetX + gameAreaWidth - margin,
+    gameAreaOffsetY + margin,
+    gameAreaOffsetX + gameAreaWidth - margin,
+    gameAreaOffsetY + gameAreaHeight - margin
+  );
+
+  pop();
+}
+
+
+      function draw() {
+        // Clear the background with a light gray color on each frame
+        background(220);
+        image(newBackgroundImage, 0, 0, width, height);
+        push();
+  fill(0, 120); // Black with transparency (~47% opacity)
+  rect(0, 0, width, height);
+  pop();
+
+  drawPegAreaEdges();
+
+
+        // --- Draw Different Zones of the Layout ---
+        drawTopBar(); // Call the function to draw the top bar
+        // drawPlayArea(); // Play area background is drawn above
+        drawBottomBar(); // Draw the bottom bar background over the game area background
+
+
+        // --- Draw the Launcher ---
+        drawLauncher(); // Call the function to draw the movable launcher
+
+        // --- Draw Labels for the Zones ---
+        // drawLabels(); // Disable generic labels for cleaner look
+
+
+        // --- Draw Pegs ---
+        // Iterate through pegs and display them. The display method handles visibility based on hit state.
+        // Filter out pegs that have finished fading before drawing to keep array clean eventually
+         pegs = pegs.filter(peg => !peg.isHit || peg.isFading);
+        for (let peg of pegs) {
+          peg.display(); // Peg display method handles the gameAreaOffsetX and gameAreaOffsetY and fading
+        }
+
+
+        // --- Draw and Update the Ball if Launched ---
+        if (ballLaunched) {
+          drawBall(); // Call the function to draw the ball
+          // Only update ball physics if playing
+          if (gameState === 'playing') {
+            updateBallPosition(); // Call the function to update the ball's position and handle collisions
+          }
+        }
+        updateExtraBalls();
+
+        // --- Draw and Update the Bucket ---
+        drawBucket();
+        // Only update bucket if playing
+        if (gameState === 'playing') {
+          updateBucketPosition();
+        }
+
+
+        // --- Handle Launcher Rotation and Ball Launch ---
+        if (gameState === 'playing') {
+          handleLauncherRotation(); // Call the function to handle user input for rotating the launcher
+          // Ball launch is handled by mousePressed and keyIsDown(32) checks
+        }
+
+        // --- Draw Active Power Up Text ---
+        if (activePowerText !== null) {
+             let timeSincePowerText = millis() - powerTextStartTime;
+             if (timeSincePowerText < powerTextDuration) {
+                 push();
+                 fill(255, 255, 255); // White text color
+                 stroke(0); // Black outline for visibility
+                 strokeWeight(2);
+                 textSize(Math.min(width, height) * 0.04); // Larger text size for power up
+                 textAlign(CENTER, CENTER);
+                 // Draw the text centered within the game area, slightly above center
+                 text(activePowerText, gameAreaOffsetX + gameAreaWidth / 2, gameAreaOffsetY + gameAreaHeight / 2 - gameAreaHeight * 0.1);
+                 pop();
+             } else {
+                 // Power text duration is over
+                 activePowerText = null; // Clear the text
+             }
+         }
+
+
+        // --- Handle Game State Display and Transitions ---
+        if (gameState === 'playing') {
+             // Check Win/Game Over conditions only when playing
+            checkWinCondition();
+            checkGameOverCondition();
+        } else if (gameState === 'win') {
+            push();
+            fill(0, 255, 0); // Green color
+            textSize(Math.min(width, height) * 0.05);
+            
+            if (currentLevel >= levels.length) {
+              // Finished all levels
+              text("CONGRATULATIONS!", gameAreaOffsetX + gameAreaWidth / 2, gameAreaOffsetY + gameAreaHeight / 2);
+              textSize(Math.min(width, height) * 0.03);
+              text("You beat the game!", gameAreaOffsetX + gameAreaWidth / 2, gameAreaOffsetY + gameAreaHeight / 2 + (Math.min(width, height) * 0.05));
+              text("Press R to restart", gameAreaOffsetX + gameAreaWidth / 2, gameAreaOffsetY + gameAreaHeight / 2 + (Math.min(width, height) * 0.1));
+            } else {
+              // Still progressing levels
+              text("LEVEL COMPLETE!", gameAreaOffsetX + gameAreaWidth / 2, gameAreaOffsetY + gameAreaHeight / 2);
+              textSize(Math.min(width, height) * 0.03);
+              text("Press ENTER for next level", gameAreaOffsetX + gameAreaWidth / 2, gameAreaOffsetY + gameAreaHeight / 2 + (Math.min(width, height) * 0.05));
+            }
+            
+            pop();
+  
+
+        } else if (gameState === 'gameover') {
+             // Display game over message centered within the game area
+            push();
+            fill(255, 0, 0); // Red color
+            textSize(Math.min(width, height) * 0.05);
+            text("GAME OVER", gameAreaOffsetX + gameAreaWidth / 2, gameAreaOffsetY + gameAreaHeight / 2);
+            textSize(Math.min(width, height) * 0.03);
+            text("Press R to restart", gameAreaOffsetX + gameAreaWidth / 2, gameAreaOffsetY + gameAreaHeight / 2 + (Math.min(width, height) * 0.05));
+            pop();
+        }
+      }
+
+      // --- Function to Draw the Top Bar Zone ---
+      function drawTopBar() {
+        push(); // Save the current drawing style settings
+        fill(180); // Set the fill color to light gray
+        stroke(50); // Set the stroke color to dark gray
+        strokeWeight(1); // Set the stroke weight to 1 pixel
+        // Draw top bar across the full canvas width
+        rect(0, 0, width, topBarHeight);
+
+        // --- Define Areas Within the Top Bar for Information Display ---
+        let thirdWidth = width / 3; // Divide the full canvas width into three equal parts
+
+// --- "Balls Left" Area ---
+fill(255);
+noStroke();
+rect(0, 0, thirdWidth, topBarHeight);
+
+// --- "Balls Left" Area ---
+fill(255);
+noStroke();
+rect(0, 0, thirdWidth, topBarHeight);
+
+// Draw horizontal capsule with balls inside
+let capsulePadding = topBarHeight * 0.15;
+let counterX = capsulePadding;
+let counterY = capsulePadding;
+let counterHeight = topBarHeight - capsulePadding * 2;
+let counterWidth = thirdWidth - capsulePadding * 2;
+let cornerRadius = counterHeight * 0.5;
+
+// Draw capsule background
+push();
+fill(40, 80, 60, 180); // Dark green with transparency
+noStroke();
+rect(counterX, counterY, counterWidth, counterHeight, cornerRadius);
+pop();
+
+// Draw balls inside capsule
+let maxSlots = 10;
+let spacing = counterWidth / maxSlots;
+let ballSize = counterHeight * 0.7;
+
+for (let i = 0; i < ballsLeft && i < maxSlots; i++) {
+  let x = counterX + spacing * i + spacing / 2;
+  let y = counterY + counterHeight / 2;
+  imageMode(CENTER);
+  image(ballImage, x, y, ballSize, ballSize);
+}
+
+
+        // --- "Level" Area ---
+        fill(255); // Set the fill color to white
+        noStroke(); // Disable stroke
+        // Draw rectangle for the launcher label area
+        rect(thirdWidth, 0, thirdWidth, topBarHeight);
+        fill(0); // Set the fill color to black for the text
+         textSize(topBarHeight * 0.4); // Set the text size relative to top bar height
+        // Display level number
+        text(`Level: ${currentLevel + 1}`, thirdWidth * 1.5, topBarHeight / 2);
+
+
+        // --- "Orange Left" Area ---
+// --- "Orange Left" Area ---
+fill(255); // Set the fill color to white
+noStroke(); // Disable stroke
+rect(thirdWidth * 2, 0, thirdWidth, topBarHeight);
+
+// Draw orange peg image + number
+let orangeSectionCenterX = thirdWidth * 2.5;
+let orangeSectionCenterY = topBarHeight / 2;
+let pegImgSize = topBarHeight * 0.6; // Size of the orange peg image
+
+push();
+imageMode(CENTER);
+image(pegImages.orange, orangeSectionCenterX - pegImgSize * 0.7, orangeSectionCenterY, pegImgSize, pegImgSize);
+pop();
+
+fill(0); // Black text
+noStroke();
+textSize(topBarHeight * 0.4);
+textAlign(LEFT, CENTER);
+text(`${orangePegsRemaining}`, orangeSectionCenterX, orangeSectionCenterY);
+
+        pop(); // Restore the previous drawing style settings
+      }
+
+      // --- Function to Draw the Main Play Area Zone ---
+      // This function now primarily draws the label, as the background is drawn in draw()
+      function drawPlayArea() {
+        // The background rectangle for the play area is now drawn in the main draw() function
+        // This function can be used for any specific play area overlays if needed
+      }
+
+      // --- Function to Draw the Bottom Bar ---
+      // This function now primarily draws the label, as the background is drawn in draw()
+      function drawBottomBar() {
+  push(); // Save current drawing style
+
+  // Draw the image to fit the bottom bar area
+  imageMode(CORNER);
+  image(
+    bottomBarBackground,
+    0,
+    gameAreaOffsetY + gameAreaHeight,
+    width,
+    bottomBarHeight
+  );
+
+  pop(); // Restore previous style
+}
+
+      // --- Function to Draw the Launcher ---
+      function drawLauncher() {
+        drawLaunchPreviewPath();
+        push(); // Save the current drawing style settings
+        // Translate to the base of the launcher, which is now centered within the game area
+        translate(launcherBaseX, launcherBaseY);
+        rotate(launcherAngle); // Rotate the drawing context by the launcher's angle
+
+        // --- Draw the Main Body of the Cannon ---
+        fill(LAUNCHER_COLOR); // Set the fill color to brown
+        noStroke(); // Disable stroke
+        beginShape(); // Start defining a custom shape
+        vertex(0, -launcherWidth / 2); // Top-left point of the base
+        vertex(launcherLength * 0.7, -launcherWidth / 2); // Top-right point of the base (shorter than full length)
+        vertex(launcherLength, -launcherWidth * 1.5); // Top point of the angled tip
+        vertex(launcherLength, launcherWidth * 1.5); // Bottom point of the angled tip
+        vertex(launcherLength * 0.7, launcherWidth / 2); // Bottom-right point of the base
+        vertex(0, launcherWidth / 2); // Bottom-left point of the base
+        endShape(CLOSE); // Close the shape
+
+        // --- Draw the Cannon Tip ---
+        fill(LAUNCHER_TIP_COLOR); // Set the fill color to gold
+        let tipLength = launcherLength * LAUNCHER_TIP_LENGTH_RATIO; // Calculate the length of the tip
+        triangle( // Draw a triangle for the tip
+          launcherLength, -launcherWidth * 1.5, // First point (top of the angled section)
+          launcherLength, launcherWidth * 1.5, // Second point (bottom of the angled section)
+          launcherLength + tipLength, 0 // Third point (the very tip)
+        );
+
+        // --- Draw Details on the Cannon Body (Bands) ---
+        fill(LAUNCHER_DETAIL_COLOR); // Set the fill color to sienna
+        for (let i = 0.2; i < 0.7; i += 0.2) { // Loop to draw multiple bands
+          let bandX = launcherLength * i; // Calculate the X position of each band
+          rect(bandX, -launcherWidth / 2 * 1.2, launcherLength * 0.1, launcherWidth / 2 * 2.4); // Draw a rectangle for the band
+        }
+
+        // --- Draw a Base for the Launcher ---
+        fill(LAUNCHER_BASE_COLOR); // Set the fill color to light gray
+        ellipse(0, 0, launcherWidth * 1.5, launcherWidth * 1.5); // Draw a circle for the base
+        pop(); // Restore the previous drawing style settings
+
+      }
+
+      function drawLaunchPreviewPath() {
+  if (ballLaunched || gameState !== 'playing') return;
+
+  push();
+  stroke(255, 255, 255, 120); 
+
+  strokeWeight(2);
+  noFill();
+
+  let startX = launcherBaseX + cos(launcherAngle) * launcherLength;
+  let startY = launcherBaseY + sin(launcherAngle) * launcherLength;
+  let simSpeed = 20;
+  let simVelX = cos(launcherAngle) * simSpeed;
+  let simVelY = sin(launcherAngle) * simSpeed;
+
+  let simX = startX;
+  let simY = startY;
+  let pathPoints = [];
+  let maxSteps = (nextBallPower === "Perfect Aim") ? 150 : 20;
+
+  for (let i = 0; i < maxSteps; i++) {
+let nextX = simX + simVelX;
+let nextY = simY + simVelY;
+let nextVelX = simVelX;
+let nextVelY = simVelY + gravity;
+
+// Then do wall and peg collisions using nextX, nextY...
+
+// After handling collisions:
+simX = nextX;
+simY = nextY;
+simVelX = nextVelX;
+simVelY = nextVelY;
+
+
+    // Wall collisions
+    if (simX > gameAreaOffsetX + gameAreaWidth - ballRadius) {
+      simX = gameAreaOffsetX + gameAreaWidth - ballRadius;
+      simVelX *= -bounceDamping;
+    } else if (simX < gameAreaOffsetX + ballRadius) {
+      simX = gameAreaOffsetX + ballRadius;
+      simVelX *= -bounceDamping;
+    }
+    if (simY < gameAreaOffsetY + ballRadius) {
+      simY = gameAreaOffsetY + ballRadius;
+      simVelY *= -bounceDamping;
+    }
+
+    // PEG COLLISIONS for PERFECT AIM
+    if (nextBallPower === "Perfect Aim") {
+      for (let peg of pegs) {
+        if (peg.isHit && !peg.isFading) continue;
+
+        let pegX = gameAreaOffsetX + peg.xRatio * gameAreaWidth;
+        let pegY = gameAreaOffsetY + peg.yRatio * gameAreaHeight;
+        let dx = simX - pegX;
+        let dy = simY - pegY;
+        let distSq = dx * dx + dy * dy;
+        let minDist = ballRadius + pegRadius;
+
+        if (distSq < minDist * minDist) {
+          let currentDistance = sqrt(distSq);
+          let overlap = minDist - currentDistance;
+          let nx = dx / currentDistance;
+          let ny = dy / currentDistance;
+          // Push ball outside peg
+          simX += nx * overlap;
+          simY += ny * overlap;
+          // Bounce
+          let dot = simVelX * nx + simVelY * ny;
+          simVelX = (simVelX - 2 * dot * nx) * bounceDamping;
+          simVelY = (simVelY - 2 * dot * ny) * bounceDamping;
+          break; // Only handle one peg collision per step
+        }
+      }
+    }
+
+    // Stop if too low
+    if (simY > gameAreaOffsetY + gameAreaHeight + bottomBarHeight) break;
+
+    pathPoints.push({ x: simX, y: simY });
+  }
+
+  beginShape();
+  for (let pt of pathPoints) vertex(pt.x, pt.y);
+  endShape();
+  pop();
+}
+
+
+
+
+      // --- Function to Draw Labels for the Zones ---
+      // Disabled for cleaner look
+      function drawLabels() {
+        // push(); // Save the current drawing style settings
+        // fill(0); // Set the fill color to black for the text
+        // noStroke(); // Disable stroke
+        // textSize(Math.min(width, height) * 0.02); // Set the text size
+
+        // // --- Labels for the Play Area ---
+        // // Center the play area label within the game area width and height
+        // text("Peg Field / Play Area", gameAreaOffsetX + gameAreaWidth / 2, gameAreaOffsetY + gameAreaHeight / 2);
+        // // --- Label for the Bottom Bar ---
+        //  // Center the bottom bar label within the game area width, below the game area
+        // text("Bucket Area", gameAreaOffsetX + gameAreaWidth / 2, gameAreaOffsetY + gameAreaHeight + bottomBarHeight / 2);
+        // pop(); // Restore the previous drawing style settings
+      }
+
+      // --- Function to Handle Launcher Rotation Based on Keyboard Input ---
+      function handleLauncherRotation() {
+        // Calculate the angle from the launcher base to the mouse
+        let dx = mouseX - launcherBaseX;
+        // Use -dy because p5.js Y-axis is inverted (0 at top)
+        let dy = mouseY - launcherBaseY; // This is the difference in Y coordinates
+        let angle = atan2(dy, dx); // atan2 calculates angle relative to positive X axis
+
+
+         // Adjust angle calculation because the launcher points 'down' relative to its rotation point
+         // A horizontal launcher would have angle 0. When it points straight up it's -PI/2, straight down is PI/2.
+         // The current setup uses an angle relative to the horizontal axis pointing right.
+         // Mouse below launcher base = positive dy, angle between 0 and PI.
+         // Mouse above launcher base = negative dy, angle between -PI and 0.
+         // We want the launcher to point from the base towards the mouse position.
+         // Let's recalculate angle relative to the upright position (PI/2)
+         let mouseAngle = atan2(mouseY - launcherBaseY, mouseX - launcherBaseX);
+
+         // Ensure angle is in the range we want (e.g., between -PI/2 and PI/2 if base is at top)
+         // Since our base is at the top and launcher points down, PI/2 is straight down.
+         // Need to map the mouse angle to the allowed range around PI/2.
+         // The range is from minRotationAngle to maxRotationAngle.
+         // A direct angle from base to mouse works, but might need adjustment based on base location.
+         // Let's stick with the original calculation (atan2(dy, dx)) but verify the constraints are correct for a base at the top.
+         // atan2(y, x) gives angle where +x is 0, +y is PI/2, -x is PI, -y is -PI/2.
+         // Our launcher base is at (launcherBaseX, launcherBaseY) pointing towards (mouseX, mouseY).
+         // The angle should be relative to the positive X axis.
+         // minRotationAngle and maxRotationAngle were defined relative to PI/2 (down).
+         // PI/2 is 90 degrees down from the horizontal.
+         // If mouse is to the right and below: dy > 0, dx > 0, angle is 0 to PI/2. This is good.
+         // If mouse is to the left and below: dy > 0, dx < 0, angle is PI/2 to PI. This is good.
+         // If mouse is to the right and above: dy < 0, dx > 0, angle is -PI/2 to 0. Need to adjust.
+         // If mouse is to the left and above: dy < 0, dx < 0, angle is -PI to -PI/2. Need to adjust.
+
+         // Let's rethink the angle calculation to make it simpler relative to pointing down.
+         // Consider the vector from launcherBaseY to mouseY and launcherBaseX to mouseX.
+         // Angle relative to the *vertical down* axis: atan2(mouseX - launcherBaseX, mouseY - launcherBaseY).
+         let angleFromVertical = atan2(mouseX - launcherBaseX, mouseY - launcherBaseY);
+
+         // The launcher is drawn pointing along the positive X axis when angle is 0 in drawLauncher().
+         // But it is translated to the base and then rotated.
+         // If rotate(0) results in pointing right: PI/2 is down, PI is left, -PI/2 is up.
+         // Our constraints are minRotationAngle and maxRotationAngle, which are defined around PI/2.
+         // So, the angle from atan2(dy, dx) seems correct if 0 is right, PI/2 is down.
+         // Let's re-verify the rotation limits.
+         // Initial angle was PI/2 (down).
+         // minRotationAngle = PI / 2 - rotationRange; (e.g., PI/2 - 0.95*PI/2 = 0.05*PI/2 = ~4.5 degrees from vertical down)
+         // maxRotationAngle = PI / 2 + rotationRange; (e.g., PI/2 + 0.95*PI/2 = 1.95*PI/2 = ~175.5 degrees from vertical down)
+         // This range seems appropriate for a launcher at the top of the screen pointing mostly downwards.
+
+         // Use the direct angle from base to mouse and constrain it.
+         let targetAngle = atan2(mouseY - launcherBaseY, mouseX - launcherBaseX);
+
+         // Constrain the angle between allowed min and max values
+         // This constraint is relative to the base's horizontal line.
+         // Let's adjust the constraints to be relative to the vertical line downwards.
+         // Angle 0 = right, PI/2 = down, PI = left, -PI/2 = up.
+         // We want the launcher to be mostly pointing down (angle PI/2).
+         // Allowed range is from (PI/2 - rotationRange) to (PI/2 + rotationRange).
+         // Let's redefine min/max angles more clearly.
+         let limitedMinAngle = PI/2 - HALF_PI * 0.9; // e.g., 45 degrees left of down
+         let limitedMaxAngle = PI/2 + HALF_PI * 0.9; // e.g., 45 degrees right of down
+
+         // Constrain the calculated angle to this range
+         launcherAngle = constrain(targetAngle, limitedMinAngle, limitedMaxAngle);
+}
+
+      // --- Function to Handle Ball Launch on Spacebar Press ---
+      // Handled by mousePressed and keyIsDown(32) now
+      function handleBallLaunch() {
+        // This function is primarily for the continuous check.
+        // Launching on spacebar is handled in keyPressed to avoid rapid firing.
+        // If using keyIsDown here, it would launch multiple balls while space is held.
+      }
+
+      function mousePressed() {
+           // Only allow launching if game state is playing and a ball is not already launched and we have balls left
+          if (!ballLaunched && gameState === 'playing' && ballsLeft > 0) {
+            launchBall();
+          }
+      }
+
+      function keyPressed() {
+        if (key === '+') {
+          currentLevel++;
+          if (currentLevel < levels.length) {
+            generateLevel(currentLevel);
+          } else {
+            gameState = 'win'; // If no more levels, stay on win screen
+          }
+        }
+
+
+           // Launch ball on spacebar press (only once per press)
+           if (key === ' ' && !ballLaunched && gameState === 'playing' && ballsLeft > 0) {
+               launchBall();
+               return false; // Prevent default spacebar action (scrolling)
+           }
+            // Handle game state transitions (R key)
+            if (gameState === 'win') {
+    if (keyCode === ENTER && currentLevel < levels.length) {
+        currentLevel++;
+        if (currentLevel < levels.length) {
+            generateLevel(currentLevel);
+        }
+    } else if (key === 'r' || key === 'R') {
+        currentLevel = 0;
+        generateLevel(currentLevel);
+    }
+
+           } else if (gameState === 'gameover') {
+               if (key === 'r' || key === 'R') {
+                   currentLevel = 0; // Restart from the first level
+                   generateLevel(currentLevel);
+               }
+           }
+           // Clear power text if R is pressed while it's visible
+           if (key === 'r' || key === 'R') {
+              activePowerText = null;
+              powerTextStartTime = 0;
+           }
+          }
+      // Function to initiate ball launch
+      function launchBall() {
+  ballLaunched = true;
+  ballsLeft--;
+  ballX = launcherBaseX + cos(launcherAngle) * launcherLength;
+  ballY = launcherBaseY + sin(launcherAngle) * launcherLength;
+  prevBallX = ballX;
+  prevBallY = ballY;
+  let launchSpeed = 20;
+  ballSpeedX = cos(launcherAngle) * launchSpeed;
+  ballSpeedY = sin(launcherAngle) * launchSpeed;
+
+  // Apply next ball power at launch
+  currentBallPower = nextBallPower;
+  nextBallPower = null; // Clear it once used
+
+  // Apply Mega Ball if active
+  if (currentBallPower === "Mega Ball") {
+    ballRadius = gameAreaHeight * BALL_RADIUS_GAME_RATIO * 1.5;
+  } else {
+    ballRadius = gameAreaHeight * BALL_RADIUS_GAME_RATIO;
+  }
+
+  // Clear power
+  nextBallPower = null;
+}
+
+      // --- Function to Draw the Ball ---
+      function drawBall() {
+  push();
+  imageMode(CENTER);
+  image(ballImage, ballX, ballY, ballRadius * 2, ballRadius * 2); // Keeps image same size as original ball
+  pop();
+}
+
+      // --- Function to Update the Ball's Position and Handle Physics ---
+      function updateBallPosition() {
+        if (!ballLaunched) return; // If the ball hasn't been launched, do nothing
+
+        // Store current position as previous before updating
+        prevBallX = ballX;
+        prevBallY = ballY;
+
+        // --- Apply Gravity ---
+        ballSpeedY += gravity; // Increase the vertical speed of the ball due to gravity
+
+        // --- Update Position ---
+        let nextBallX = ballX + ballSpeedX;
+        let nextBallY = ballY + ballSpeedY;
+
+
+        // --- Handle Bouncing off the Edges of the Play Area (within the game area) ---
+        // Check left/right walls
+        if (nextBallX > gameAreaOffsetX + gameAreaWidth - ballRadius) {
+             nextBallX = gameAreaOffsetX + gameAreaWidth - ballRadius; // Snap to boundary
+             ballSpeedX *= -bounceDamping; // Reverse and dampen speed
+        } else if (nextBallX < gameAreaOffsetX + ballRadius) {
+             nextBallX = gameAreaOffsetX + ballRadius; // Snap to boundary
+             ballSpeedX *= -bounceDamping; // Reverse and dampen speed
+        }
+
+        // Check top wall
+        if (nextBallY < gameAreaOffsetY + ballRadius) {
+             nextBallY = gameAreaOffsetY + ballRadius; // Snap to boundary
+             ballSpeedY *= -bounceDamping; // Reverse and dampen speed
+        }
+
+
+        // --- Handle Collision with Pegs ---
+        // Iterate through pegs and check collision. We need to check against the current position but
+        // potentially calculate intersection based on previous and next positions for accuracy (line-circle)
+        // For simplicity, let's use circle-circle collision check at the *next* position,
+        // and if hit, adjust the speed and position.
+        for (let i = pegs.length - 1; i >= 0; i--) {
+            let peg = pegs[i];
+            // Check collision regardless of hit state, as long as it's not finished fading
+            if (peg.checkCollision(nextBallX, nextBallY, ballRadius)) {
+  if (currentBallPower === "Ghost Shot") {
+    // Ghost Shot: pass through without bouncing
+    continue;
+  }
+
+  if (currentBallPower === "Splinter Strike") {
+    let strength = 6 + random(-1, 1);
+let upward = -3 + random(-1, 1);
+spawnExtraBall(nextBallX, nextBallY, strength, upward);
+spawnExtraBall(nextBallX, nextBallY, -strength, upward);
+
+currentBallPower = null;
+  }
+
+  if (currentBallPower === "Shockwave") {
+    destroyNearbyPegs(peg);
+    currentBallPower = null;
+  }
+
+  // Normal bounce logic
+  let pegPixelX = gameAreaOffsetX + peg.xRatio * gameAreaWidth;
+  let pegPixelY = gameAreaOffsetY + peg.yRatio * gameAreaHeight;
+  let dx = nextBallX - pegPixelX;
+  let dy = nextBallY - pegPixelY;
+  let distSq = dx * dx + dy * dy;
+  let minDist = ballRadius + pegRadius;
+  if (distSq < minDist * minDist) {
+    let currentDistance = sqrt(distSq);
+    let overlap = minDist - currentDistance;
+    let nx = dx / currentDistance;
+    let ny = dy / currentDistance;
+    nextBallX += nx * overlap;
+    nextBallY += ny * overlap;
+    let dot = ballSpeedX * nx + ballSpeedY * ny;
+    ballSpeedX = (ballSpeedX - 2 * dot * nx) * bounceDamping;
+    ballSpeedY = (ballSpeedY - 2 * dot * ny) * bounceDamping;
+  }
+}
+
+        }
+
+
+         // --- Handle Collision with Bucket Walls ---
+        // Define the four inner corners of the bucket opening
+        let innerLeftX = bucketX + wallThickness;
+        let innerRightX = bucketX + bucketWidth - wallThickness;
+        let innerTopY = bucketY + wallThickness;
+        let innerBottomY = bucketY + bucketHeight - wallThickness;
+
+
+        // Check collision with the left inner wall of the bucket
+        if (nextBallX + ballRadius > innerLeftX && prevBallX + ballRadius <= innerLeftX && // Ball crossed the left inner edge from the left
+            nextBallY > bucketY && nextBallY < bucketY + bucketHeight) { // Ball is vertically aligned with the bucket height
+             nextBallX = innerLeftX - ballRadius; // Snap to boundary
+             ballSpeedX *= -bounceDamping; // Reverse and dampen speed
+        }
+        // Check collision with the right inner wall of the bucket
+         if (nextBallX - ballRadius < innerRightX && prevBallX - ballRadius >= innerRightX && // Ball crossed the right inner edge from the right
+            nextBallY > bucketY && nextBallY < bucketY + bucketHeight) { // Ball is vertically aligned with the bucket height
+             nextBallX = innerRightX + ballRadius; // Snap to boundary
+             ballSpeedX *= -bounceDamping; // Reverse and dampen speed
+        }
+
+         // Check collision with the bottom inner wall of the bucket
+         if (nextBallY + ballRadius > innerBottomY && prevBallY + ballRadius <= innerBottomY && // Ball crossed the bottom inner edge from above
+             nextBallX > innerLeftX && nextBallX < innerRightX) { // Ball is horizontally aligned with the inner bucket width
+             nextBallY = innerBottomY - ballRadius; // Snap to boundary
+             ballSpeedY *= -bounceDamping; // Reverse and dampen speed
+         }
+         // Check collision with the top inner wall (this is the bucket opening)
+         // Collision with the opening should result in the ball entering the bucket (handled below)
+         // If it hits the *underside* of the top wall, it should bounce back down.
+          if (nextBallY - ballRadius < innerTopY && prevBallY - ballRadius >= innerTopY && // Ball crossed the top inner edge from below
+             nextBallX > innerLeftX && nextBallX < innerRightX) { // Ball is horizontally aligned with the inner bucket width
+             nextBallY = innerTopY + ballRadius; // Snap to boundary
+             ballSpeedY *= -bounceDamping; // Reverse and dampen speed
+         }
+
+
+        // --- Handle Scoring (Ball enters bucket from the top) ---
+        // Check if the ball crossed the top edge of the bucket walls from above AND is within the inner width
+        if (prevBallY <= bucketY + wallThickness && nextBallY > bucketY + wallThickness && // Crossed the top edge from above
+            nextBallX > bucketX + wallThickness && nextBallX < bucketX + bucketWidth - wallThickness) { // Within the inner bucket width
+             // Collision with the bucket opening detected
+             ballLaunched = false; // Stop the ball
+             ballsLeft++; // Add a ball back
+             // Reset ball position to the launcher tip
+             ballX = launcherBaseX + cos(launcherAngle) * launcherLength;
+             ballY = launcherBaseY + sin(launcherAngle) * launcherLength;
+             ballSpeedX = 0; // Stop ball movement
+             ballSpeedY = 0;
+             activePowerText = null; // Clear power text when ball is reset
+             powerTextStartTime = 0;
+             return; // Stop updating this ball
+        }
+
+
+        // Check if the ball has fallen below the bottom of the screen entirely (missed the bucket and went off)
+        // Using gameAreaOffsetY + gameAreaHeight + bottomBarHeight as the floor
+        if (nextBallY > gameAreaOffsetY + gameAreaHeight + bottomBarHeight + ballRadius) {
+          ballLaunched = false;
+          // Reset ball position to the launcher tip
+          ballX = launcherBaseX + cos(launcherAngle) * launcherLength;
+          ballY = launcherBaseY + sin(launcherAngle) * launcherLength;
+          ballSpeedX = 0; // Stop ball movement
+          ballSpeedY = 0;
+          activePowerText = null; // Clear power text when ball is reset
+          powerTextStartTime = 0;
+          return; // Stop updating this ball
+        }
+
+         // Update ball position based on calculated next position
+        ballX = nextBallX;
+        ballY = nextBallY;
+      }
+
+      // --- Function to Draw the Bucket ---
+      function drawBucket() {
+  push();
+  imageMode(CENTER);
+
+  // Define the visual dimensions explicitly
+  const visualCauldronWidth = bucketWidth * 1.5;   // Larger than actual bucket
+  const visualCauldronHeight = bucketHeight * 2;   // Taller than actual bucket
+
+  // Position horizontally at bucket's center
+  const visualCauldronX = bucketX + bucketWidth / 2;
+
+  // Position vertically so the bottom of the image aligns exactly with bucket bottom edge
+  const visualCauldronY = bucketY + bucketHeight;
+
+  // Draw image centered at bottom of bucket (allowing visual overflow upward)
+  image(cauldronImage, visualCauldronX, visualCauldronY, visualCauldronWidth, visualCauldronHeight);
+
+  pop();
+}
+
+
+      // --- Function to Update the Bucket's Position ---
+      function updateBucketPosition() {
+          // Move the bucket horizontally
+          bucketX += bucketSpeed * bucketDirection;
+
+          // Check for collision with the left and right edges of the game area
+          // The bucket should stay within the horizontal bounds of the game area
+          if (bucketX < gameAreaOffsetX) {
+              bucketDirection = 1; // Change direction to right
+              bucketX = gameAreaOffsetX; // Keep bucket within bounds
+          } else if (bucketX + bucketWidth > gameAreaOffsetX + gameAreaWidth) {
+              bucketDirection = -1; // Change direction to left
+              bucketX = gameAreaOffsetX + gameAreaWidth - bucketWidth; // Keep bucket within bounds
+          }
+      }
+
+      // --- Function to Check Win Condition ---
+      function checkWinCondition() {
+          if (orangePegsRemaining === 0) {
+              gameState = 'win'; // Change game state to win
+               // Clear any active power text when winning
+              activePowerText = null;
+              powerTextStartTime = 0;
+          }
+      }
+
+      // --- Function to Check Game Over Condition ---
+      function checkGameOverCondition() {
+          if (ballsLeft === 0 && !ballLaunched && gameState === 'playing') {
+              gameState = 'gameover'; // Change game state to gameover
+              // Clear any active power text when game over
+              activePowerText = null;
+              powerTextStartTime = 0;
+          }
+      }
+
+
+      // Handle window resizing
+      function windowResized() {
+        canvasWidth = windowWidth;
+        canvasHeight = windowHeight;
+        resizeCanvas(canvasWidth, canvasHeight);
+        // Recalculate game area dimensions and offset to maintain aspect ratio
+        calculateGameAreaDimensions();
+        // Recalculate layout dimensions based on new canvas height
+        topBarHeight = canvasHeight * TOP_BAR_HEIGHT_RATIO;
+        bottomBarHeight = canvasHeight * BOTTOM_BAR_HEIGHT_RATIO;
+        availablePlayAreaHeight = canvasHeight - topBarHeight - bottomBarHeight; // This is the available space, not the actual game area height
+        // Recalculate peg and ball dimensions based on game area height
+        pegRadius = gameAreaHeight * PEG_RADIUS_GAME_RATIO;
+        minPegDistance = gameAreaHeight * MIN_PEG_DISTANCE_GAME_RATIO;
+        ballRadius = gameAreaHeight * BALL_RADIUS_GAME_RATIO;
+        //recalculate launcher position and dimensions based on game area
+        launcherLength = gameAreaHeight * LAUNCHER_LENGTH_GAME_RATIO;
+        launcherWidth = gameAreaWidth * LAUNCHER_WIDTH_GAME_RATIO; // Launcher width based on game area width
+        launcherBaseX = gameAreaOffsetX + gameAreaWidth / 2; // Launcher centered in game area
+        launcherBaseY = topBarHeight; // Launcher base is at the bottom of the top bar
+        // Recalculate rotation limits (these are not affected by aspect ratio of play area)
+        // Redefine min/max angles clearly (relative to down)
+        let limitedMinAngle = PI/2 - HALF_PI * 0.8; // e.g., 45 degrees left of down
+        let limitedMaxAngle = PI/2 + HALF_PI * 0.8; // e.g., 45 degrees right of down
+        minRotationAngle = limitedMinAngle;
+        maxRotationAngle = limitedMaxAngle;
+
+
+        // Adjust text size - Use a fixed ratio of the smaller canvas dimension or top bar height
+         textSize(topBarHeight * 0.4);
+
+
+        // Reset ball position if it was launched or if window is resized during gameplay
+        if (ballLaunched || gameState === 'playing') {
+             ballLaunched = false; // Stop current ball
+             // Reset ball position to the launcher tip, using updated launcher position
+             ballX = launcherBaseX + cos(launcherAngle) * launcherLength;
+             ballY = launcherBaseY + sin(launcherAngle) * launcherLength;
+             prevBallX = ballX; // Reset previous position too
+             prevBallY = ballY;
+             ballSpeedX = 0;
+             ballSpeedY = 0;
+        }
+        // Bucket position and dimensions are recalculated in calculateGameAreaDimensions
+        // Wall thickness is also recalculated in calculateGameAreaDimensions
+        // Power text is cleared if the game state changes, but should probably be cleared on resize too
+        activePowerText = null;
+        powerTextStartTime = 0;
+      }
+    </script>
+  </body>
+</html>
